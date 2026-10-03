@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>click&cut · StockNotes</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            lino: '#FAF7F2',
+            arena: '#EFE7DC',
+            arenaBorde: '#E2D6C5',
+            salvia: '#7DB59A',
+            salviaDark: '#2E6B4B',
+            salviaSuave: '#EBF4F0',
+            terracota: '#B95D55',
+            durazno: '#F5C2A5',
+            moradoPastel: '#F3EEF9',
+            moradoBorde: '#D8C6EE',
+            texto: '#2B2927',
+            textoMuted: '#7E7873'
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18 & Babel Standalone -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    body {
+      background-color: #FAF7F2;
+      color: #2B2927;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .font-mono-numbers {
+      font-variant-numeric: tabular-nums;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="selection:bg-durazno selection:text-texto">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+
+    const formatMXN = (val) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(val);
+
+    const INITIAL_CONFIG = {
+      storeName: 'click&cut · StockNotes',
+      tagline: 'Cuentas Madre, Perfiles, Notas de Mayoristas & Estrategia',
+      logoType: 'emoji',
+      logoValue: '🌿',
+      coverUrl: 'https://images.unsplash.com/photo-1507652313519-d4e9174996dd?auto=format&fit=crop&w=1200&q=80',
+      pin: '2408'
+    };
+
+    const INITIAL_MASTER_ACCOUNTS = [
+      {
+        id: 'acc-1',
+        service: 'Netflix Premium 4K',
+        email: 'clickit.netflix01@gmail.com',
+        pass: 'Netfl1x#2026',
+        provider: 'Alex Telegram',
+        renewDate: '2026-10-28',
+        accountCost: 150,
+        profiles: [
+          { id: 'p1', name: 'Perfil 1', client: 'Carlos Mendoza', pin: '1420', status: 'Asignado', price: 85, expireDate: '2026-10-06' },
+          { id: 'p2', name: 'Perfil 2', client: 'Mariana Reyes', pin: '8831', status: 'Asignado', price: 85, expireDate: '2026-10-04' },
+          { id: 'p3', name: 'Perfil 3', client: '', pin: '2408', status: 'Disponible', price: 85, expireDate: '' },
+          { id: 'p4', name: 'Perfil 4', client: '', pin: '5512', status: 'Disponible', price: 85, expireDate: '' },
+          { id: 'p5', name: 'Perfil 5 (Kids)', client: '', pin: '0000', status: 'Disponible', price: 85, expireDate: '' }
+        ]
+      },
+      {
+        id: 'acc-2',
+        service: 'Disney+ Estándar',
+        email: 'clickit.disney02@hotmail.com',
+        pass: 'Disn3yP@ss26',
+        provider: 'Digital Express',
+        renewDate: '2026-11-01',
+        accountCost: 80,
+        profiles: [
+          { id: 'dp1', name: 'Perfil 1', client: 'Luis Garza', pin: '3312', status: 'Asignado', price: 50, expireDate: '2026-10-18' },
+          { id: 'dp2', name: 'Perfil 2', client: '', pin: '1122', status: 'Disponible', price: 50, expireDate: '' },
+          { id: 'dp3', name: 'Perfil 3', client: '', pin: '9944', status: 'Disponible', price: 50, expireDate: '' },
+          { id: 'dp4', name: 'Perfil 4', client: '', pin: '7721', status: 'Disponible', price: 50, expireDate: '' }
+        ]
+      }
+    ];
+
+    const INITIAL_NOTES = [
+      {
+        id: 'n1',
+        title: 'Oferta Flash Grupo Alex (Mayorista)',
+        source: 'Grupo VIP Telegram @AlexStream',
+        tag: 'Oferta Proveedor',
+        content: 'Netflix 4 pantallas completas a $125 MXN si compro 3 cuentas juntas. Sale a $31.25 por perfil. Si vendo cada perfil a $80 le saco $48.75 de ganancia limpia a cada pantalla.',
+        targetService: 'Netflix Premium 4K',
+        costFound: 31.25,
+        myPrice: 80,
+        date: '2026-10-02'
+      },
+      {
+        id: 'n2',
+        title: 'Idea Combo Dúo que vi en grupo de Facebook',
+        source: 'Grupo Streaming México FB',
+        tag: 'Idea de Venta / Combo',
+        content: 'Están vendiendo combo "Cine en Casa": 1 pantalla de Netflix + 1 perfil de Max por $115 MXN. A mí el costo combinado me sale en $60, ganaría $55 por cliente y atrae más que vender por separado.',
+        targetService: 'Combo Netflix + Max',
+        costFound: 60,
+        myPrice: 115,
+        date: '2026-10-01'
+      }
+    ];
+
+    function App() {
+      const [config, setConfig] = useState(() => {
+        const saved = localStorage.getItem('cnc_sn_config');
+        return saved ? JSON.parse(saved) : INITIAL_CONFIG;
+      });
+
+      const [isLocked, setIsLocked] = useState(true);
+      const [pinInput, setPinInput] = useState('');
+      const [pinError, setPinError] = useState(false);
+
+      const [masterAccounts, setMasterAccounts] = useState(() => {
+        const saved = localStorage.getItem('cnc_sn_master');
+        return saved ? JSON.parse(saved) : INITIAL_MASTER_ACCOUNTS;
+      });
+
+      const [notes, setNotes] = useState(() => {
+        const saved = localStorage.getItem('cnc_sn_notes');
+        return saved ? JSON.parse(saved) : INITIAL_NOTES;
+      });
+
+      const [currentTab, setCurrentTab] = useState('accounts');
+
+      // Modales
+      const [showSettingsModal, setShowSettingsModal] = useState(false);
+      const [showNewAccountModal, setShowNewAccountModal] = useState(false);
+      const [showNewNoteModal, setShowNewNoteModal] = useState(false);
+      const [showTicketModal, setShowTicketModal] = useState(false);
+      const [assigningProfile, setAssigningProfile] = useState(null);
+      const [selectedNoteTag, setSelectedNoteTag] = useState('Todos');
+
+      // Estado del Ticket
+      const [ticketClient, setTicketClient] = useState('Cliente');
+      const [ticketService, setTicketService] = useState('Netflix Premium (Perfil con PIN)');
+      const [ticketAmount, setTicketAmount] = useState('85');
+      const [ticketAccess, setTicketAccess] = useState('Perfil 1 · PIN: 1420');
+
+      // Formulario de nota
+      const [noteForm, setNoteForm] = useState({
+        title: '',
+        source: '',
+        tag: 'Oferta Proveedor',
+        content: '',
+        targetService: '',
+        costFound: '',
+        myPrice: ''
+      });
+
+      useEffect(() => localStorage.setItem('cnc_sn_config', JSON.stringify(config)), [config]);
+      useEffect(() => localStorage.setItem('cnc_sn_master', JSON.stringify(masterAccounts)), [masterAccounts]);
+      useEffect(() => localStorage.setItem('cnc_sn_notes', JSON.stringify(notes)), [notes]);
+
+      const handlePinPress = (digit) => {
+        if (pinInput.length < 4) {
+          const next = pinInput + digit;
+          setPinInput(next);
+          if (next.length === 4) {
+            if (next === config.pin) {
+              setIsLocked(false);
+              setPinInput('');
+              setPinError(false);
+            } else {
+              setPinError(true);
+              setTimeout(() => {
+                setPinInput('');
+                setPinError(false);
+              }, 600);
+            }
+          }
+        }
+      };
+
+      const handleImageUpload = (file, callback) => {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onloadend = () => callback(reader.result);
+        reader.readAsDataURL(file);
+      };
+
+      const RenderLogo = ({ className = "w-7 h-7" }) => {
+        if (config.logoType === 'image' && config.logoValue) {
+          return <img src={config.logoValue} alt="Logo" className={`${className} object-contain rounded-xl`} />;
+        }
+        return <span className="text-xl flex items-center justify-center">{config.logoValue || '🌿'}</span>;
+      };
+
+      const stockSummary = useMemo(() => {
+        let totalProfiles = 0;
+        let availableProfiles = 0;
+        let assignedProfiles = 0;
+        const catalogMap = {};
+
+        masterAccounts.forEach(acc => {
+          if (!catalogMap[acc.service]) {
+            catalogMap[acc.service] = { service: acc.service, available: 0, total: 0, price: 80 };
+          }
+          acc.profiles.forEach(p => {
+            totalProfiles++;
+            catalogMap[acc.service].total++;
+            catalogMap[acc.service].price = p.price || catalogMap[acc.service].price;
+            if (p.status === 'Disponible') {
+              availableProfiles++;
+              catalogMap[acc.service].available++;
+            } else {
+              assignedProfiles++;
+            }
+          });
+        });
+
+        return {
+          totalProfiles,
+          availableProfiles,
+          assignedProfiles,
+          services: Object.values(catalogMap)
+        };
+      }, [masterAccounts]);
+
+      // Abrir Ticket precargado desde un perfil específico
+      const handleOpenTicketForProfile = (acc, profile) => {
+        setTicketClient(profile.client || 'Cliente');
+        setTicketService(acc.service);
+        setTicketAmount((profile.price || 85).toString());
+        setTicketAccess(`Cuenta: ${acc.email} | Clave: ${acc.pass} | ${profile.name} (PIN: ${profile.pin})`);
+        setShowTicketModal(true);
+      };
+
+      const handleSaveProfileAssignment = (e) => {
+        e.preventDefault();
+        const f = e.target;
+        const clientName = f.clientName.value.trim();
+        const pin = f.profilePin.value.trim();
+        const expireDate = f.expireDate.value;
+        const price = parseFloat(f.profilePrice.value) || 80;
+
+        setMasterAccounts(prev => prev.map(acc => {
+          if (acc.id === assigningProfile.accId) {
+            const updated = acc.profiles.map(p => {
+              if (p.id === assigningProfile.profile.id) {
+                return {
+                  ...p,
+                  client: clientName,
+                  pin: pin || p.pin,
+                  status: clientName ? 'Asignado' : 'Disponible',
+                  expireDate: clientName ? expireDate : '',
+                  price
+                };
+              }
+              return p;
+            });
+            return { ...acc, profiles: updated };
+          }
+          return acc;
+        }));
+
+        setAssigningProfile(null);
+      };
+
+      const handleFreeProfile = (accId, profileId) => {
+        if (confirm('¿Liberar este perfil y ponerlo como Disponible?')) {
+          setMasterAccounts(prev => prev.map(acc => {
+            if (acc.id === accId) {
+              return {
+                ...acc,
+                profiles: acc.profiles.map(p => p.id === profileId ? { ...p, client: '', status: 'Disponible', expireDate: '' } : p)
+              };
+            }
+            return acc;
+          }));
+        }
+      };
+
+      const handleCreateMasterAccount = (e) => {
+        e.preventDefault();
+        const f = e.target;
+        const service = f.accService.value.trim();
+        const email = f.accEmail.value.trim();
+        const pass = f.accPass.value.trim();
+        const provider = f.accProvider.value.trim() || 'General';
+        const cost = parseFloat(f.accCost.value) || 120;
+        const profileCount = parseInt(f.accProfiles.value, 10) || 4;
+
+        const profiles = [];
+        for (let i = 1; i <= profileCount; i++) {
+          profiles.push({
+            id: `p-${Date.now()}-${i}`,
+            name: `Perfil ${i}`,
+            client: '',
+            pin: `${1000 + Math.floor(Math.random() * 9000)}`,
+            status: 'Disponible',
+            price: Math.round((cost / profileCount) * 1.8),
+            expireDate: ''
+          });
+        }
+
+        const newAcc = {
+          id: `acc-${Date.now()}`,
+          service,
+          email,
+          pass,
+          provider,
+          renewDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          accountCost: cost,
+          profiles
+        };
+
+        setMasterAccounts(prev => [newAcc, ...prev]);
+        setShowNewAccountModal(false);
+      };
+
+      const handleSaveNote = (e) => {
+        e.preventDefault();
+        if (!noteForm.title.trim() && !noteForm.content.trim()) return;
+
+        const newN = {
+          id: `note-${Date.now()}`,
+          title: noteForm.title.trim() || 'Nota sin título',
+          source: noteForm.source.trim() || 'Varios / Grupo',
+          tag: noteForm.tag,
+          content: noteForm.content.trim(),
+          targetService: noteForm.targetService.trim(),
+          costFound: parseFloat(noteForm.costFound) || 0,
+          myPrice: parseFloat(noteForm.myPrice) || 0,
+          date: new Date().toISOString().split('T')[0]
+        };
+
+        setNotes(prev => [newN, ...prev]);
+        setShowNewNoteModal(false);
+        setNoteForm({ title: '', source: '', tag: 'Oferta Proveedor', content: '', targetService: '', costFound: '', myPrice: '' });
+      };
+
+      const ticketPreviewText = `🧾 *${config.storeName}*\n*Comprobante de Entrega Digital*\n------------------------------\n👤 *Cliente:* ${ticketClient}\n🌸 *Servicio:* ${ticketService}\n💳 *Total Cobrado:* $${ticketAmount} MXN\n🔑 *Acceso / Credenciales:*\n${ticketAccess}\n------------------------------\n¡Gracias por tu compra! Garantía completa durante tus 30 días de servicio. 🍿`;
+
+      // --- PANTALLA DE BLOQUEO PRIVADA ---
+      if (isLocked) {
+        return (
+          <div className="min-h-screen bg-lino flex flex-col justify-between items-center p-6 select-none">
+            <div className="w-full max-w-sm rounded-3xl overflow-hidden shadow-sm border border-arena relative mt-4 h-52 bg-arenaBorde">
+              <img src={config.coverUrl} alt="Portada" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-texto/85 via-texto/25 to-transparent flex flex-col justify-end p-5 text-white">
+                <div className="flex items-center gap-2 mb-1">
+                  <RenderLogo className="w-6 h-6" />
+                  <span className="text-[11px] font-bold tracking-widest uppercase opacity-90">StockNotes</span>
+                </div>
+                <h1 className="text-xl font-bold tracking-tight">{config.storeName}</h1>
+                <p className="text-xs opacity-90 text-arena">{config.tagline}</p>
+              </div>
+            </div>
+
+            <div className="w-full max-w-xs flex flex-col items-center my-auto">
+              <span className="text-xs font-semibold tracking-wider text-textoMuted uppercase mb-3">Introduce tu PIN</span>
+              <div className="flex gap-4 mb-8">
+                {[0, 1, 2, 3].map(i => (
+                  <div
+                    key={i}
+                    className={`w-3.5 h-3.5 rounded-full border transition-all duration-200 ${
+                      pinInput.length > i
+                        ? pinError ? 'bg-terracota border-terracota scale-110' : 'bg-salviaDark border-salviaDark scale-110'
+                        : 'border-arenaBorde bg-white'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 w-full">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+                  <button
+                    key={num}
+                    onClick={() => handlePinPress(num.toString())}
+                    className="h-14 rounded-2xl bg-white border border-arena text-xl font-medium text-texto shadow-sm active:bg-arena/50 transition flex items-center justify-center font-mono-numbers"
+                  >
+                    {num}
+                  </button>
+                ))}
+                
+                <label className="h-14 rounded-2xl bg-lino border border-arena text-[11px] text-textoMuted active:bg-arena flex items-center justify-center cursor-pointer text-center p-1">
+                  Foto
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => handleImageUpload(e.target.files[0], res => setConfig(prev => ({ ...prev, coverUrl: res })))}
+                  />
+                </label>
+
+                <button
+                  onClick={() => handlePinPress('0')}
+                  className="h-14 rounded-2xl bg-white border border-arena text-xl font-medium text-texto shadow-sm active:bg-arena/50 transition flex items-center justify-center font-mono-numbers"
+                >
+                  0
+                </button>
+                <button
+                  onClick={() => setPinInput(prev => prev.slice(0, -1))}
+                  className="h-14 rounded-2xl bg-lino border border-arena text-xs font-semibold text-terracota active:bg-arena flex items-center justify-center"
+                >
+                  Borrar
+                </button>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-textoMuted text-center pb-2">
+              PIN por defecto: <strong className="font-mono-numbers">2408</strong>
+            </p>
+          </div>
+        );
+      }
+
+      // --- APP PRINCIPAL ---
+      return (
+        <div className="min-h-screen bg-lino flex flex-col pb-20 text-texto">
+          {/* CABECERA CON BOTÓN TICKET RÁPIDO */}
+          <header className="sticky top-0 z-40 bg-lino/95 backdrop-blur-md border-b border-arena px-4 py-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <RenderLogo className="w-7 h-7" />
+              <div>
+                <h2 className="text-sm font-bold tracking-tight text-texto">{config.storeName}</h2>
+                <p className="text-[10px] text-textoMuted">{stockSummary.availableProfiles} perfiles disponibles</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setShowTicketModal(true)}
+                className="w-8 h-8 rounded-xl bg-white border border-arena flex items-center justify-center text-xs shadow-sm active:scale-95"
+                title="Generar Ticket WhatsApp"
+              >
+                🧾
+              </button>
+              <button
+                onClick={() => setShowSettingsModal(true)}
+                className="w-8 h-8 rounded-xl bg-white border border-arena flex items-center justify-center text-xs shadow-sm active:scale-95"
+                title="Personalizar logo y fotos"
+              >
+                🎨
+              </button>
+              <button
+                onClick={() => setIsLocked(true)}
+                className="w-8 h-8 rounded-xl bg-white border border-arena flex items-center justify-center text-xs text-textoMuted active:scale-95"
+                title="Bloquear"
+              >
+                🔒
+              </button>
+            </div>
+          </header>
+
+          <main className="flex-1 p-3.5 max-w-xl mx-auto w-full space-y-4">
+            {/* PESTAÑA: CUENTAS MADRE & PERFILES */}
+            {currentTab === 'accounts' && (
+              <div className="space-y-4">
+                <div className="bg-white border border-arena rounded-3xl p-4 shadow-sm space-y-2.5">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-salviaDark">
+                        👑 Cuentas Madre & Pantallas
+                      </span>
+                      <h3 className="text-base font-bold text-texto">Desglose de Perfiles</h3>
+                    </div>
+                    <button
+                      onClick={() => setShowNewAccountModal(true)}
+                      className="bg-salviaDark text-white px-3 py-1.5 rounded-xl text-xs font-semibold shadow-sm active:scale-95"
+                    >
+                      + Cuenta Madre
+                    </button>
+                  </div>
+                  <p className="text-xs text-textoMuted">
+                    Gestiona correos, claves, PIN de cada pantalla y genera el comprobante directo con un clic.
+                  </p>
+
+                  <div className="grid grid-cols-3 gap-2 pt-1 font-mono-numbers text-center">
+                    <div className="bg-salviaSuave border border-salvia/30 rounded-2xl p-2">
+                      <span className="text-[10px] font-sans text-salviaDark block font-semibold">Disponibles</span>
+                      <strong className="text-base text-salviaDark">{stockSummary.availableProfiles}</strong>
+                    </div>
+                    <div className="bg-arena/50 border border-arena rounded-2xl p-2">
+                      <span className="text-[10px] font-sans text-textoMuted block font-semibold">Ocupados</span>
+                      <strong className="text-base text-texto">{stockSummary.assignedProfiles}</strong>
+                    </div>
+                    <div className="bg-moradoPastel border border-moradoBorde rounded-2xl p-2">
+                      <span className="text-[10px] font-sans text-textoMuted block font-semibold">Total Perfiles</span>
+                      <strong className="text-base text-texto">{stockSummary.totalProfiles}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* LISTA DE CUENTAS */}
+                <div className="space-y-4">
+                  {masterAccounts.map(acc => (
+                    <div key={acc.id} className="bg-white border border-arena rounded-3xl p-4 shadow-sm space-y-3">
+                      <div className="flex justify-between items-start border-b border-arena/70 pb-3">
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span>🎬</span>
+                            <h4 className="font-bold text-sm text-texto">{acc.service}</h4>
+                          </div>
+                          <div className="text-xs font-mono-numbers text-texto mt-1 bg-lino px-2.5 py-1 rounded-xl border border-arena/80 inline-block">
+                            <span>📧 {acc.email}</span> · <span className="text-textoMuted">🔑 {acc.pass}</span>
+                          </div>
+                          <p className="text-[11px] text-textoMuted mt-1">
+                            Prov: <strong className="text-texto">{acc.provider}</strong> · Corte Cuenta: {acc.renewDate}
+                          </p>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            if (confirm(`¿Eliminar la cuenta madre ${acc.service} (${acc.email})?`)) {
+                              setMasterAccounts(prev => prev.filter(a => a.id !== acc.id));
+                            }
+                          }}
+                          className="text-xs text-textoMuted hover:text-terracota p-1"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+
+                      {/* Desglose de Perfiles */}
+                      <div className="space-y-2">
+                        <span className="text-[11px] font-semibold text-textoMuted uppercase tracking-wider block">
+                          Perfiles / Pantallas:
+                        </span>
+
+                        <div className="grid gap-2">
+                          {acc.profiles.map(p => {
+                            const isAvailable = p.status === 'Disponible';
+                            let diffDays = null;
+                            if (p.expireDate) {
+                              diffDays = Math.ceil((new Date(p.expireDate) - new Date()) / (1000 * 60 * 60 * 24));
+                            }
+
+                            return (
+                              <div
+                                key={p.id}
+                                className={`p-3 rounded-2xl border transition text-xs flex items-center justify-between ${
+                                  isAvailable ? 'bg-salviaSuave/50 border-salvia/30' : 'bg-white border-arena shadow-2xs'
+                                }`}
+                              >
+                                <div className="space-y-0.5">
+                                  <div className="flex items-center gap-2">
+                                    <strong className="text-texto font-semibold">{p.name}</strong>
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                                      isAvailable ? 'bg-salviaDark text-white' : 'bg-arena text-texto font-semibold'
+                                    }`}>
+                                      {isAvailable ? 'Disponible' : 'Asignado'}
+                                    </span>
+                                    <span className="text-[11px] font-mono-numbers text-textoMuted">PIN: {p.pin}</span>
+                                  </div>
+
+                                  {!isAvailable && (
+                                    <div className="text-[11px] text-texto">
+                                      👤 Cliente: <strong className="text-salviaDark">{p.client}</strong>
+                                      {p.expireDate && (
+                                        <span className="ml-2 font-mono-numbers text-textoMuted">
+                                          · Vence: {p.expireDate} ({diffDays} días)
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-1.5 font-mono-numbers">
+                                  <span className="font-bold text-texto text-xs">{formatMXN(p.price)}</span>
+                                  
+                                  {/* BOTÓN TICKET DIRECTO PARA ESTE PERFIL */}
+                                  {!isAvailable && (
+                                    <button
+                                      onClick={() => handleOpenTicketForProfile(acc, p)}
+                                      className="bg-durazno/50 border border-durazno px-2 py-1 rounded-xl text-[11px] font-semibold text-texto shadow-2xs active:scale-95"
+                                      title="Crear ticket para WhatsApp"
+                                    >
+                                      🧾 Ticket
+                                    </button>
+                                  )}
+
+                                  <button
+                                    onClick={() => setAssigningProfile({ accId: acc.id, profile: p, accService: acc.service, accEmail: acc.email, accPass: acc.pass })}
+                                    className="bg-white border border-arena px-2 py-1 rounded-xl text-[11px] font-semibold text-salviaDark shadow-2xs active:scale-95"
+                                  >
+                                    {isAvailable ? 'Asignar' : 'Editar'}
+                                  </button>
+
+                                  {!isAvailable && (
+                                    <button
+                                      onClick={() => handleFreeProfile(acc.id, p.id)}
+                                      className="text-terracota text-[10px] p-1 font-bold"
+                                      title="Liberar perfil"
+                                    >
+                                      ✕
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* PESTAÑA: NOTAS ESTRATÉGICAS */}
+            {currentTab === 'notes' && (
+              <div className="space-y-4">
+                <div className="bg-white border border-arena rounded-3xl p-4 shadow-sm space-y-2.5">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-salviaDark">
+                        📝 Pizarra de Notas & Estrategia
+                      </span>
+                      <h3 className="text-base font-bold text-texto">Ideas, Precios & Grupos de Venta</h3>
+                    </div>
+                    <button
+                      onClick={() => setShowNewNoteModal(true)}
+                      className="bg-salviaDark text-white px-3 py-1.5 rounded-xl text-xs font-semibold shadow-sm active:scale-95"
+                    >
+                      + Nueva Nota
+                    </button>
+                  </div>
+                  <p className="text-xs text-textoMuted">
+                    Apunta ofertas de mayoristas de Telegram/WhatsApp, combos que viste en otros grupos de Facebook y compáralos con tus precios.
+                  </p>
+
+                  <div className="flex gap-1.5 overflow-x-auto pb-1 hide-scrollbar text-xs pt-1">
+                    {['Todos', 'Oferta Proveedor', 'Idea de Venta / Combo', 'Contacto / Proveedor', 'Apunte Rápido'].map(t => (
+                      <button
+                        key={t}
+                        onClick={() => setSelectedNoteTag(t)}
+                        className={`px-3 py-1 rounded-xl whitespace-nowrap font-medium transition ${
+                          selectedNoteTag === t ? 'bg-[#3D3A37] text-white' : 'bg-lino border border-arena text-textoMuted'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {notes
+                    .filter(n => selectedNoteTag === 'Todos' || n.tag === selectedNoteTag)
+                    .map(n => {
+                      const hasNumbers = n.costFound > 0 && n.myPrice > 0;
+                      const profit = n.myPrice - n.costFound;
+                      const margin = n.myPrice > 0 ? ((profit / n.myPrice) * 100).toFixed(0) : 0;
+
+                      return (
+                        <div key={n.id} className="bg-white border border-arena rounded-3xl p-4 shadow-sm space-y-2.5">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <span className="text-[10px] px-2 py-0.5 rounded-md bg-arena font-semibold text-textoMuted mr-2">
+                                {n.tag}
+                              </span>
+                              <span className="text-[11px] text-textoMuted">{n.source}</span>
+                              <h4 className="font-bold text-sm text-texto mt-1">{n.title}</h4>
+                            </div>
+                            <button
+                              onClick={() => {
+                                if (confirm('¿Eliminar esta nota?')) setNotes(prev => prev.filter(x => x.id !== n.id));
+                              }}
+                              className="text-textoMuted hover:text-terracota text-xs font-bold p-1"
+                            >
+                              ✕
+                            </button>
+                          </div>
+
+                          <p className="text-xs text-texto leading-relaxed whitespace-pre-line bg-lino p-3 rounded-2xl border border-arena/60">
+                            {n.content}
+                          </p>
+
+                          {hasNumbers && (
+                            <div className="bg-salviaSuave/50 border border-salvia/30 rounded-2xl p-2.5 text-xs font-mono-numbers flex items-center justify-between">
+                              <div>
+                                <span className="font-sans text-[11px] text-textoMuted block">
+                                  Visto: {formatMXN(n.costFound)} ➔ Vender a: {formatMXN(n.myPrice)}
+                                </span>
+                                <span className="text-salviaDark font-bold">
+                                  Ganancia: +{formatMXN(profit)} MXN ({margin}% margen)
+                                </span>
+                              </div>
+                              <span className="text-[10px] bg-white border border-salvia/40 text-salviaDark px-2 py-1 rounded-xl font-bold font-sans">
+                                Margen {margin >= 40 ? 'Excelente 🚀' : 'Moderado'}
+                              </span>
+                            </div>
+                          )}
+
+                          <div className="flex justify-between items-center text-[10px] text-textoMuted pt-1">
+                            <span>Servicio: {n.targetService || 'General'}</span>
+                            <span>{n.date}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
+            {/* PESTAÑA: MINI CATÁLOGO */}
+            {currentTab === 'catalog' && (
+              <div className="space-y-4">
+                <div className="bg-white border border-arena rounded-3xl p-4 shadow-sm space-y-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-salviaDark">
+                    📦 Mini Catálogo de Stock
+                  </span>
+                  <h3 className="text-base font-bold text-texto">Resumen de Existencias Listas</h3>
+                  <p className="text-xs text-textoMuted">
+                    Consulta cuántos perfiles libres tienes en este instante para responder rápido a tus clientes por WhatsApp.
+                  </p>
+                </div>
+
+                <div className="grid gap-2.5">
+                  {stockSummary.services.map((item, idx) => (
+                    <div key={idx} className="bg-white border border-arena rounded-2xl p-3.5 shadow-sm flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span>🌿</span>
+                          <h4 className="font-semibold text-sm text-texto">{item.service}</h4>
+                        </div>
+                        <span className="text-xs font-mono-numbers text-salviaDark font-bold mt-0.5 block">
+                          Precio: {formatMXN(item.price)} MXN/mes
+                        </span>
+                      </div>
+
+                      <div className="text-right">
+                        <span className={`text-xs px-2.5 py-1 rounded-full font-bold font-mono-numbers ${
+                          item.available > 0
+                            ? 'bg-salviaSuave text-salviaDark border border-salvia/30'
+                            : 'bg-terracota/10 text-terracota border border-terracota/20'
+                        }`}>
+                          {item.available > 0 ? `${item.available} disp.` : 'Agotado'}
+                        </span>
+                        <span className="block text-[10px] text-textoMuted mt-1">de {item.total} totales</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => {
+                    const lines = stockSummary.services.map(s => `✨ *${s.service}*: ${formatMXN(s.price)} MXN (${s.available > 0 ? s.available + ' disponibles' : 'Agotado'})`);
+                    const msg = `🍿 *CATÁLOGO DE STREAMING · ${config.storeName}*\nEntrega inmediata y garantía completa.\n\n${lines.join('\n')}\n\n📲 ¡Pide tu perfil enviando mensaje!`;
+                    navigator.clipboard.writeText(msg);
+                    alert('¡Catálogo copiado para enviar por WhatsApp!');
+                  }}
+                  className="w-full bg-salviaDark text-white py-2.5 rounded-2xl text-xs font-semibold shadow-sm active:scale-95"
+                >
+                  Copiar Catálogo Completo para WhatsApp
+                </button>
+              </div>
+            )}
+          </main>
+
+          {/* BARRA INFERIOR */}
+          <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-arena px-4 py-2 flex justify-around z-30">
+            <button
+              onClick={() => setCurrentTab('accounts')}
+              className={`text-xs py-1.5 px-3 rounded-xl transition flex flex-col items-center gap-0.5 ${
+                currentTab === 'accounts' ? 'text-salviaDark font-bold bg-salviaSuave' : 'text-textoMuted'
+              }`}
+            >
+              <span>👑</span>
+              <span>Cuentas Madre</span>
+            </button>
+
+            <button
+              onClick={() => setCurrentTab('notes')}
+              className={`text-xs py-1.5 px-3 rounded-xl transition flex flex-col items-center gap-0.5 ${
+                currentTab === 'notes' ? 'text-salviaDark font-bold bg-salviaSuave' : 'text-textoMuted'
+              }`}
+            >
+              <span>📝</span>
+              <span>Notas & Ideas</span>
+            </button>
+
+            <button
+              onClick={() => setCurrentTab('catalog')}
+              className={`text-xs py-1.5 px-3 rounded-xl transition flex flex-col items-center gap-0.5 ${
+                currentTab === 'catalog' ? 'text-salviaDark font-bold bg-salviaSuave' : 'text-textoMuted'
+              }`}
+            >
+              <span>📦</span>
+              <span>Mini Catálogo</span>
+            </button>
+          </nav>
+
+          {/* MODAL: TICKET DE COMPRA DIGITAL PARA WHATSAPP */}
+          {showTicketModal && (
+            <div className="fixed inset-0 bg-texto/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white border border-arena rounded-3xl p-5 max-w-sm w-full space-y-3.5 shadow-xl max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-start border-b border-arena pb-2">
+                  <div>
+                    <span className="text-[10px] text-salviaDark font-bold uppercase tracking-wider block">
+                      Comprobante Rápido para WhatsApp
+                    </span>
+                    <h3 className="text-base font-bold text-texto">Ticket de Entrega Digital</h3>
+                  </div>
+                  <button onClick={() => setShowTicketModal(false)} className="text-textoMuted font-bold text-sm">✕</button>
+                </div>
+
+                <div className="space-y-2.5 text-xs">
+                  <div>
+                    <label className="text-textoMuted font-semibold">Nombre del Cliente:</label>
+                    <input
+                      value={ticketClient}
+                      onChange={e => setTicketClient(e.target.value)}
+                      className="w-full bg-lino border border-arena rounded-xl p-2 mt-0.5 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-textoMuted font-semibold">Servicio Streaming:</label>
+                    <input
+                      value={ticketService}
+                      onChange={e => setTicketService(e.target.value)}
+                      className="w-full bg-lino border border-arena rounded-xl p-2 mt-0.5 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-textoMuted font-semibold">Monto Cobrado (MXN):</label>
+                    <input
+                      type="number"
+                      value={ticketAmount}
+                      onChange={e => setTicketAmount(e.target.value)}
+                      className="w-full bg-lino border border-arena rounded-xl p-2 mt-0.5 font-mono-numbers focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-textoMuted font-semibold">Acceso / Credenciales / PIN:</label>
+                    <textarea
+                      rows={3}
+                      value={ticketAccess}
+                      onChange={e => setTicketAccess(e.target.value)}
+                      className="w-full bg-lino border border-arena rounded-xl p-2 mt-0.5 font-mono-numbers focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Vista previa idéntica */}
+                <div className="space-y-1 text-xs">
+                  <span className="text-[11px] text-textoMuted font-semibold">Vista Previa del Comprobante:</span>
+                  <div className="bg-lino border border-arena rounded-2xl p-3 text-[11px] font-mono whitespace-pre-line leading-relaxed text-texto">
+                    {ticketPreviewText}
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-1">
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(ticketPreviewText)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full bg-salviaDark text-white py-2.5 rounded-2xl text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-95 transition"
+                  >
+                    <span>🔗</span> Enviar directo por WhatsApp
+                  </a>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowTicketModal(false)}
+                      className="flex-1 bg-lino border border-arena py-2 rounded-xl text-xs font-medium text-texto"
+                    >
+                      Cerrar
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(ticketPreviewText);
+                        alert('¡Ticket copiado al portapapeles!');
+                      }}
+                      className="flex-1 bg-[#3D3A37] text-white py-2 rounded-xl text-xs font-semibold"
+                    >
+                      Copiar Ticket
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL: ASIGNAR / EDITAR PERFIL */}
+          {assigningProfile && (
+            <div className="fixed inset-0 bg-texto/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white border border-arena rounded-3xl p-5 max-w-sm w-full space-y-3.5 shadow-xl">
+                <div className="flex justify-between items-center border-b border-arena pb-2">
+                  <div>
+                    <h3 className="font-bold text-sm text-texto">{assigningProfile.profile.name}</h3>
+                    <p className="text-[11px] text-textoMuted">{assigningProfile.accService}</p>
+                  </div>
+                  <button onClick={() => setAssigningProfile(null)} className="text-textoMuted font-bold">✕</button>
+                </div>
+
+                <form onSubmit={handleSaveProfileAssignment} className="space-y-3 text-xs">
+                  <div>
+                    <label className="text-textoMuted font-semibold">Nombre del Cliente (dejar vacío si está libre):</label>
+                    <input
+                      name="clientName"
+                      defaultValue={assigningProfile.profile.client || ''}
+                      placeholder="Ej. Carlos Mendoza"
+                      className="w-full bg-lino border border-arena rounded-xl p-2 mt-1 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-textoMuted font-semibold">PIN del Perfil:</label>
+                      <input
+                        name="profilePin"
+                        defaultValue={assigningProfile.profile.pin || '2408'}
+                        className="w-full bg-lino border border-arena rounded-xl p-2 mt-1 font-mono-numbers focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-textoMuted font-semibold">Precio Venta ($):</label>
+                      <input
+                        type="number"
+                        name="profilePrice"
+                        defaultValue={assigningProfile.profile.price || 85}
+                        className="w-full bg-lino border border-arena rounded-xl p-2 mt-1 font-mono-numbers focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-textoMuted font-semibold">Fecha de Vencimiento:</label>
+                    <input
+                      type="date"
+                      name="expireDate"
+                      defaultValue={assigningProfile.profile.expireDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                      className="w-full bg-lino border border-arena rounded-xl p-2 mt-1 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setAssigningProfile(null)}
+                      className="flex-1 bg-lino border border-arena py-2 rounded-xl"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 bg-salviaDark text-white py-2 rounded-xl font-semibold"
+                    >
+                      Guardar
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL: NUEVA CUENTA MADRE */}
+          {showNewAccountModal && (
+            <div className="fixed inset-0 bg-texto/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white border border-arena rounded-3xl p-5 max-w-sm w-full space-y-3.5 shadow-xl max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-center border-b border-arena pb-2">
+                  <h3 className="font-bold text-sm">Registrar Cuenta Madre</h3>
+                  <button onClick={() => setShowNewAccountModal(false)} className="text-textoMuted font-bold">✕</button>
+                </div>
+
+                <form onSubmit={handleCreateMasterAccount} className="space-y-2.5 text-xs">
+                  <div>
+                    <label className="text-textoMuted font-semibold">Servicio:</label>
+                    <input name="accService" required placeholder="Ej. Netflix Premium 4K" className="w-full bg-lino border border-arena rounded-xl p-2 mt-0.5 focus:outline-none" />
+                  </div>
+
+                  <div>
+                    <label className="text-textoMuted font-semibold">Correo de la Cuenta Madre:</label>
+                    <input name="accEmail" type="email" required placeholder="cuenta@gmail.com" className="w-full bg-lino border border-arena rounded-xl p-2 mt-0.5 focus:outline-none" />
+                  </div>
+
+                  <div>
+                    <label className="text-textoMuted font-semibold">Contraseña:</label>
+                    <input name="accPass" required placeholder="Contraseña de la cuenta" className="w-full bg-lino border border-arena rounded-xl p-2 mt-0.5 focus:outline-none" />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-textoMuted font-semibold">Proveedor:</label>
+                      <input name="accProvider" placeholder="Ej. Alex Telegram" className="w-full bg-lino border border-arena rounded-xl p-2 mt-0.5 focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="text-textoMuted font-semibold">Costo Total ($):</label>
+                      <input type="number" name="accCost" defaultValue={150} className="w-full bg-lino border border-arena rounded-xl p-2 mt-0.5 font-mono-numbers focus:outline-none" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-textoMuted font-semibold">Número de Perfiles a Desglosar:</label>
+                    <select name="accProfiles" defaultValue={5} className="w-full bg-lino border border-arena rounded-xl p-2 mt-0.5 focus:outline-none">
+                      <option value={1}>1 Pantalla (Cuenta Individual)</option>
+                      <option value={2}>2 Pantallas (Dúo)</option>
+                      <option value={4}>4 Pantallas</option>
+                      <option value={5}>5 Pantallas (Netflix / Disney)</option>
+                      <option value={6}>6 Pantallas</option>
+                    </select>
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <button type="button" onClick={() => setShowNewAccountModal(false)} className="flex-1 bg-lino border border-arena py-2 rounded-xl">Cancelar</button>
+                    <button type="submit" className="flex-1 bg-salviaDark text-white py-2 rounded-xl font-semibold">Crear y Desglosar</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL: NUEVA NOTA */}
+          {showNewNoteModal && (
+            <div className="fixed inset-0 bg-texto/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white border border-arena rounded-3xl p-5 max-w-sm w-full space-y-3.5 shadow-xl max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-center border-b border-arena pb-2">
+                  <h3 className="font-bold text-sm">Nueva Nota / Idea de Precios</h3>
+                  <button onClick={() => setShowNewNoteModal(false)} className="text-textoMuted font-bold">✕</button>
+                </div>
+
+                <form onSubmit={handleSaveNote} className="space-y-2.5 text-xs">
+                  <div>
+                    <label className="text-textoMuted font-semibold">Título o Resumen:</label>
+                    <input
+                      value={noteForm.title}
+                      onChange={e => setNoteForm({ ...noteForm, title: e.target.value })}
+                      placeholder="Ej. Oferta en grupo Telegram"
+                      required
+                      className="w-full bg-lino border border-arena rounded-xl p-2 mt-0.5 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-textoMuted font-semibold">Origen / Grupo:</label>
+                      <input
+                        value={noteForm.source}
+                        onChange={e => setNoteForm({ ...noteForm, source: e.target.value })}
+                        placeholder="Telegram, Facebook, Alex..."
+                        className="w-full bg-lino border border-arena rounded-xl p-2 mt-0.5 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-textoMuted font-semibold">Etiqueta:</label>
+                      <select
+                        value={noteForm.tag}
+                        onChange={e => setNoteForm({ ...noteForm, tag: e.target.value })}
+                        className="w-full bg-lino border border-arena rounded-xl p-2 mt-0.5 focus:outline-none"
+                      >
+                        <option value="Oferta Proveedor">Oferta Proveedor</option>
+                        <option value="Idea de Venta / Combo">Idea de Venta / Combo</option>
+                        <option value="Contacto / Proveedor">Contacto / Proveedor</option>
+                        <option value="Apunte Rápido">Apunte Rápido</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-textoMuted font-semibold">Contenido o Mensaje Pegado:</label>
+                    <textarea
+                      rows={3}
+                      value={noteForm.content}
+                      onChange={e => setNoteForm({ ...noteForm, content: e.target.value })}
+                      placeholder="Pega las condiciones, precios por lote o la idea..."
+                      className="w-full bg-lino border border-arena rounded-xl p-2 mt-0.5 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="border-t border-arena pt-2">
+                    <span className="text-[11px] font-bold text-salviaDark">Comparar Números (Opcional):</span>
+                    <div className="grid grid-cols-2 gap-2 mt-1.5 font-mono-numbers">
+                      <div>
+                        <label className="text-textoMuted font-sans block text-[10px]">Costo Visto ($):</label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={noteForm.costFound}
+                          onChange={e => setNoteForm({ ...noteForm, costFound: e.target.value })}
+                          placeholder="35"
+                          className="w-full bg-lino border border-arena rounded-xl p-1.5 text-xs focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-textoMuted font-sans block text-[10px]">Mi Precio Venta ($):</label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={noteForm.myPrice}
+                          onChange={e => setNoteForm({ ...noteForm, myPrice: e.target.value })}
+                          placeholder="85"
+                          className="w-full bg-lino border border-arena rounded-xl p-1.5 text-xs focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <button type="button" onClick={() => setShowNewNoteModal(false)} className="flex-1 bg-lino border border-arena py-2 rounded-xl">Cancelar</button>
+                    <button type="submit" className="flex-1 bg-salviaDark text-white py-2 rounded-xl font-semibold">Guardar Nota</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL: AJUSTES Y FOTOS */}
+          {showSettingsModal && (
+            <div className="fixed inset-0 bg-texto/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white border border-arena rounded-3xl p-5 max-w-sm w-full space-y-4 shadow-xl max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-center border-b border-arena pb-2">
+                  <h3 className="font-bold text-sm">Personalizar Logo & Fotos</h3>
+                  <button onClick={() => setShowSettingsModal(false)} className="text-textoMuted font-bold">✕</button>
+                </div>
+
+                <div className="bg-lino border border-arena rounded-2xl p-3 space-y-2 text-xs">
+                  <span className="font-bold text-texto block">Logo de la Cabecera:</span>
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-white border border-arena flex items-center justify-center overflow-hidden p-1 shadow-sm">
+                      <RenderLogo className="w-full h-full" />
+                    </div>
+                    <div className="flex-1">
+                      <label className="cursor-pointer bg-white border border-arena text-texto px-3 py-1.5 rounded-xl text-[11px] font-semibold block text-center shadow-sm">
+                        ⬆️ Subir logo desde mi iPhone
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={e => handleImageUpload(e.target.files[0], res => setConfig(prev => ({ ...prev, logoType: 'image', logoValue: res })))}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-lino border border-arena rounded-2xl p-3 space-y-2 text-xs">
+                  <span className="font-bold text-texto block">Foto Pantalla de Bloqueo:</span>
+                  <div className="flex items-center gap-3">
+                    <div className="w-14 h-14 rounded-2xl overflow-hidden border border-arena bg-arenaBorde shadow-sm">
+                      <img src={config.coverUrl} alt="Portada" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex-1">
+                      <label className="cursor-pointer bg-white border border-arena text-texto px-3 py-1.5 rounded-xl text-[11px] font-semibold block text-center shadow-sm">
+                        ⬆️ Subir foto desde mi iPhone
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={e => handleImageUpload(e.target.files[0], res => setConfig(prev => ({ ...prev, coverUrl: res })))}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-lino border border-arena rounded-2xl p-3 space-y-2 text-xs">
+                  <label className="font-bold text-texto block">PIN de Desbloqueo (4 dígitos):</label>
+                  <input
+                    type="password"
+                    maxLength={4}
+                    value={config.pin}
+                    onChange={e => setConfig(prev => ({ ...prev, pin: e.target.value }))}
+                    className="w-full bg-white border border-arena rounded-xl p-2 font-mono-numbers text-center font-bold tracking-widest focus:outline-none"
+                  />
+                </div>
+
+                <button
+                  onClick={() => {
+                    setShowSettingsModal(false);
+                    alert('¡Ajustes guardados correctamente!');
+                  }}
+                  className="w-full bg-salviaDark text-white py-2.5 rounded-2xl text-xs font-semibold"
+                >
+                  Guardar Cambios
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
