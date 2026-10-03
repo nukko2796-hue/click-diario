@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>click&cut · Tu Tienda Digital</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            lino: '#FBF9F5',
+            arena: '#EFE7DC',
+            arenaBorde: '#E4D9C8',
+            salvia: '#7DB59A',
+            salviaDark: '#2E6B4B',
+            salviaSuave: '#EBF4F0',
+            terracota: '#B95D55',
+            durazno: '#F5C2A5',
+            moradoPastel: '#F3EEF9',
+            moradoBorde: '#D8C6EE',
+            texto: '#2B2927',
+            textoMuted: '#7E7873'
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18 & Babel Standalone -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    body {
+      background-color: #FBF9F5;
+      color: #2B2927;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .font-mono-numbers {
+      font-variant-numeric: tabular-nums;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="selection:bg-durazno selection:text-texto">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+
+    const formatMXN = (val) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(val);
+
+    const INITIAL_CONFIG = {
+      storeName: 'click&cut · Tu Tienda Digital',
+      tagline: 'Cuentas streaming, perfiles privados y licencias digitales',
+      logoType: 'emoji', // 'emoji' | 'image'
+      logoValue: '🌿', // texto emoji o Base64 DataURL
+      coverUrl: 'https://images.unsplash.com/photo-1507652313519-d4e9174996dd?auto=format&fit=crop&w=1200&q=80',
+      pin: '2408'
+    };
+
+    const INITIAL_PRODUCTS = [
+      { id: '1', name: 'Netflix 1 Pantalla (Perfil con PIN)', code: 'CC-NFLX-PIN', category: 'Perfiles / Pantallas', type: 'Streaming', stock: 14, price: 85, cost: 40, provider: 'Proveedor Alex (Telegram)' },
+      { id: '2', name: 'Disney+ Estándar (Perfil)', code: 'CC-DSNY-01', category: 'Perfiles / Pantallas', type: 'Streaming', stock: 8, price: 50, cost: 22, provider: 'Proveedor Alex (Telegram)' },
+      { id: '3', name: 'Max Platino 4K (Perfil)', code: 'CC-MAX-01', category: 'Perfiles / Pantallas', type: 'Streaming', stock: 7, price: 55, cost: 25, provider: 'Digital Express' },
+      { id: '4', name: 'Spotify Premium Individual (Cuenta)', code: 'CC-SPOT-IND', category: 'Cuentas Completas', type: 'Música', stock: 6, price: 65, cost: 30, provider: 'Mayorista Alex' },
+      { id: '5', name: 'Prime Video 6 Meses (Perfil)', code: 'CC-PRIME-06', category: 'Perfiles / Pantallas', type: 'Streaming', stock: 2, price: 45, cost: 18, provider: 'Digital Express' },
+      { id: '6', name: 'YouTube Premium 1 Mes (Cuenta)', code: 'CC-YT-01', category: 'Cuentas Completas', type: 'Streaming', stock: 1, price: 45, cost: 20, provider: 'Digital Express' },
+      { id: '7', name: 'Crunchyroll Fan (Cuenta)', code: 'CC-CRU-01', category: 'Cuentas Completas', type: 'Streaming', stock: 0, price: 50, cost: 24, provider: 'Proveedor Alex (Telegram)' }
+    ];
+
+    const INITIAL_PROVIDERS = [
+      {
+        id: '1',
+        name: 'Proveedor Alex (Telegram)',
+        channel: 'Telegram: @AlexStreamVIP · WA: +52 55 8312 9901',
+        broadcast: 'Canal Telegram: Lotes VIP Streaming 24/7',
+        updated: '2026-10-03',
+        status: 'Lote Activo',
+        catalog: [
+          { service: 'Netflix 1 Pantalla (Perfil con PIN)', cost: 40, stock: 25 },
+          { service: 'Disney+ Estándar (Perfil)', cost: 22, stock: 15 },
+          { service: 'Max Platino 4K (Perfil)', cost: 26, stock: 10 },
+          { service: 'Crunchyroll Fan (Cuenta)', cost: 24, stock: 8 }
+        ]
+      },
+      {
+        id: '2',
+        name: 'Mayorista Alex Streaming',
+        channel: 'WhatsApp (+52 1 81 2345 6789)',
+        broadcast: 'Grupo WhatsApp: Reposiciones diarias',
+        updated: '2026-10-02',
+        status: 'Lote Activo',
+        catalog: [
+          { service: 'Spotify Premium Individual (Cuenta)', cost: 30, stock: 20 },
+          { service: 'Netflix 1 Pantalla (Perfil con PIN)', cost: 42, stock: 18 }
+        ]
+      }
+    ];
+
+    const PRESET_COVERS = [
+      { id: 'streaming', label: 'Streaming', url: 'https://images.unsplash.com/photo-1522869635100-9f4c5e86aa37?auto=format&fit=crop&w=1200&q=80' },
+      { id: 'clickandcut', label: 'click&cut', url: 'https://images.unsplash.com/photo-1507652313519-d4e9174996dd?auto=format&fit=crop&w=1200&q=80' },
+      { id: 'botanica', label: 'Botánica', url: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&w=1200&q=80' }
+    ];
+
+    function App() {
+      const [config, setConfig] = useState(() => {
+        const saved = localStorage.getItem('cnc_config');
+        return saved ? JSON.parse(saved) : INITIAL_CONFIG;
+      });
+
+      const [isLocked, setIsLocked] = useState(true);
+      const [pinInput, setPinInput] = useState('');
+      const [pinError, setPinError] = useState(false);
+
+      const [products, setProducts] = useState(() => {
+        const saved = localStorage.getItem('cnc_products');
+        return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
+      });
+
+      const [providers, setProviders] = useState(() => {
+        const saved = localStorage.getItem('cnc_providers');
+        return saved ? JSON.parse(saved) : INITIAL_PROVIDERS;
+      });
+
+      const [notes, setNotes] = useState(() => {
+        const saved = localStorage.getItem('cnc_loose_notes');
+        return saved ? JSON.parse(saved) : [
+          { id: '1', title: 'Promo Alex Fin de Semana', text: 'Cuentas completas de Disney a $130 si compramos 3 juntas.', date: '2026-10-02' }
+        ];
+      });
+
+      const [currentView, setCurrentView] = useState('inventory');
+      const [providerSubTab, setProviderSubTab] = useState('lotes');
+      const [selectedProviderIndex, setSelectedProviderIndex] = useState(0);
+      const [searchQuery, setSearchQuery] = useState('');
+      const [stockFilter, setStockFilter] = useState('todos');
+      const [categoryFilter, setCategoryFilter] = useState('Todos');
+
+      const [showSettingsModal, setShowSettingsModal] = useState(false);
+      const [showTicketModal, setShowTicketModal] = useState(false);
+      const [showCashClose, setShowCashClose] = useState(false);
+      const [showProductModal, setShowProductModal] = useState(false);
+      const [showNewProviderModal, setShowNewProviderModal] = useState(false);
+      const [showNewNoteModal, setShowNewNoteModal] = useState(false);
+      const [editingProduct, setEditingProduct] = useState(null);
+
+      const [ticketClient, setTicketClient] = useState('Cliente');
+      const [ticketService, setTicketService] = useState('Netflix 1 Pantalla (Perfil con PIN)');
+      const [ticketAmount, setTicketAmount] = useState('85');
+      const [ticketAccess, setTicketAccess] = useState('Perfil privado con PIN');
+
+      const [newProvName, setNewProvName] = useState('');
+      const [newProvContact, setNewProvContact] = useState('');
+      const [newProvChannel, setNewProvChannel] = useState('');
+      const [rawBatchText, setRawBatchText] = useState('');
+
+      useEffect(() => localStorage.setItem('cnc_config', JSON.stringify(config)), [config]);
+      useEffect(() => localStorage.setItem('cnc_products', JSON.stringify(products)), [products]);
+      useEffect(() => localStorage.setItem('cnc_providers', JSON.stringify(providers)), [providers]);
+      useEffect(() => localStorage.setItem('cnc_loose_notes', JSON.stringify(notes)), [notes]);
+
+      const handlePinPress = (digit) => {
+        if (pinInput.length < 4) {
+          const next = pinInput + digit;
+          setPinInput(next);
+          if (next.length === 4) {
+            if (next === config.pin) {
+              setIsLocked(false);
+              setPinInput('');
+              setPinError(false);
+            } else {
+              setPinError(true);
+              setTimeout(() => {
+                setPinInput('');
+                setPinError(false);
+              }, 600);
+            }
+          }
+        }
+      };
+
+      const metrics = useMemo(() => {
+        const totalScreens = products.reduce((acc, p) => acc + (p.stock || 0), 0);
+        const potentialProfit = products.reduce((acc, p) => acc + ((p.price - p.cost) * p.stock), 0);
+        const lowStockCount = products.filter(p => p.stock > 0 && p.stock <= 2).length;
+        const outOfStockCount = products.filter(p => p.stock === 0).length;
+        return { totalScreens, potentialProfit, lowStockCount, outOfStockCount };
+      }, [products]);
+
+      const filteredProducts = useMemo(() => {
+        return products.filter(p => {
+          if (categoryFilter !== 'Todos' && p.category !== categoryFilter) return false;
+          if (stockFilter === 'en_stock' && p.stock === 0) return false;
+          if (stockFilter === 'por_terminarse' && (p.stock > 2 || p.stock === 0)) return false;
+          if (stockFilter === 'agotados' && p.stock > 0) return false;
+          if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            return p.name.toLowerCase().includes(q) || (p.code || '').toLowerCase().includes(q) || (p.provider || '').toLowerCase().includes(q);
+          }
+          return true;
+        });
+      }, [products, categoryFilter, stockFilter, searchQuery]);
+
+      // Subida de imagen genérica desde el iPhone (Base64)
+      const handleImageUpload = (file, callback) => {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onloadend = () => callback(reader.result);
+        reader.readAsDataURL(file);
+      };
+
+      // Componente reutilizable para renderizar el Logo (sea imagen o emoji)
+      const RenderLogo = ({ className = "w-7 h-7" }) => {
+        if (config.logoType === 'image' && config.logoValue) {
+          return (
+            <img
+              src={config.logoValue}
+              alt="Logo"
+              className={`${className} object-contain rounded-xl`}
+            />
+          );
+        }
+        return <span className="text-xl flex items-center justify-center">{config.logoValue || '🌿'}</span>;
+      };
+
+      // Ticket
+      const ticketPreviewText = `🧾 *${config.storeName}*\n*Comprobante de Compra #CC-${Math.floor(1000 + Math.random() * 9000)}*\n------------------------------\n👤 *Cliente:* ${ticketClient}\n🌸 *Servicio:* ${ticketService}\n💳 *Total Cobrado:* $${ticketAmount} MXN\n🔑 *Acceso / PIN:* ${ticketAccess}\n------------------------------\n¡Gracias por tu preferencia! Garantía total durante tus 30 días de servicio. 🍿`;
+
+      // --- PANTALLA DE BLOQUEO CON PIN ---
+      if (isLocked) {
+        return (
+          <div className="min-h-screen bg-lino flex flex-col justify-between items-center p-6 select-none">
+            {/* Portada */}
+            <div className="w-full max-w-sm rounded-3xl overflow-hidden shadow-sm border border-arena relative mt-4 h-52 bg-arenaBorde">
+              <img src={config.coverUrl} alt="Portada" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-texto/80 via-texto/20 to-transparent flex flex-col justify-end p-5 text-white">
+                <div className="flex items-center gap-2 mb-1">
+                  <RenderLogo className="w-6 h-6" />
+                  <span className="text-[11px] font-bold tracking-widest uppercase opacity-90">click&cut</span>
+                </div>
+                <h1 className="text-xl font-bold tracking-tight">{config.storeName.replace('click&cut · ', '')}</h1>
+                <p className="text-xs opacity-90 text-arena">{config.tagline}</p>
+              </div>
+            </div>
+
+            {/* Teclado */}
+            <div className="w-full max-w-xs flex flex-col items-center my-auto">
+              <span className="text-xs font-semibold tracking-wider text-textoMuted uppercase mb-3">Introduce tu PIN</span>
+              <div className="flex gap-4 mb-8">
+                {[0, 1, 2, 3].map(i => (
+                  <div
+                    key={i}
+                    className={`w-3.5 h-3.5 rounded-full border transition-all duration-200 ${
+                      pinInput.length > i
+                        ? pinError ? 'bg-terracota border-terracota scale-110' : 'bg-salviaDark border-salviaDark scale-110'
+                        : 'border-arenaBorde bg-white'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 w-full">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+                  <button
+                    key={num}
+                    onClick={() => handlePinPress(num.toString())}
+                    className="h-14 rounded-2xl bg-white border border-arena text-xl font-medium text-texto shadow-sm active:bg-arena/50 transition flex items-center justify-center font-mono-numbers"
+                  >
+                    {num}
+                  </button>
+                ))}
+                
+                {/* Botón rápido para cambiar foto de portada directo desde la pantalla de inicio */}
+                <label className="h-14 rounded-2xl bg-lino border border-arena text-[11px] text-textoMuted active:bg-arena flex items-center justify-center cursor-pointer text-center p-1">
+                  Foto
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => handleImageUpload(e.target.files[0], res => setConfig(prev => ({ ...prev, coverUrl: res })))}
+                  />
+                </label>
+
+                <button
+                  onClick={() => handlePinPress('0')}
+                  className="h-14 rounded-2xl bg-white border border-arena text-xl font-medium text-texto shadow-sm active:bg-arena/50 transition flex items-center justify-center font-mono-numbers"
+                >
+                  0
+                </button>
+                <button
+                  onClick={() => setPinInput(prev => prev.slice(0, -1))}
+                  className="h-14 rounded-2xl bg-lino border border-arena text-xs font-semibold text-terracota active:bg-arena flex items-center justify-center"
+                >
+                  Borrar
+                </button>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-textoMuted text-center pb-2">
+              PIN por defecto: <strong className="font-mono-numbers">2408</strong> (Modificable en Ajustes)
+            </p>
+          </div>
+        );
+      }
+
+      // --- APP DESBLOQUEADA ---
+      return (
+        <div className="min-h-screen bg-lino flex flex-col pb-16 text-texto">
+          {/* CABECERA CON LOGO PERSONALIZADO */}
+          <header className="sticky top-0 z-40 bg-lino/95 backdrop-blur-md border-b border-arena px-3.5 py-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <RenderLogo className="w-7 h-7" />
+              <h2 className="text-sm font-bold tracking-tight text-texto truncate max-w-[170px]">
+                {config.storeName}
+              </h2>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setShowTicketModal(true)}
+                className="w-8 h-8 rounded-xl bg-white border border-arena flex items-center justify-center text-xs active:scale-95"
+                title="Comprobante rápido"
+              >
+                🧾
+              </button>
+
+              <button
+                onClick={() => setShowCashClose(true)}
+                className="w-8 h-8 rounded-xl bg-salviaSuave border border-salvia/30 flex items-center justify-center text-xs text-salviaDark active:scale-95"
+                title="Cierre de Caja"
+              >
+                🌙
+              </button>
+
+              {/* Botón de Ajustes para personalizar logo y fotos */}
+              <button
+                onClick={() => setShowSettingsModal(true)}
+                className="w-8 h-8 rounded-xl bg-moradoPastel border border-moradoBorde flex items-center justify-center text-xs text-texto active:scale-95"
+                title="Ajustes de Tienda y Logo"
+              >
+                🎨
+              </button>
+
+              <button
+                onClick={() => { setEditingProduct(null); setShowProductModal(true); }}
+                className="bg-[#3D3A37] text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 active:scale-95 shadow-sm"
+              >
+                <span>+</span> Nuevo
+              </button>
+
+              <button
+                onClick={() => setIsLocked(true)}
+                className="w-8 h-8 rounded-xl bg-white border border-arena flex items-center justify-center text-xs text-textoMuted active:scale-95"
+                title="Bloquear sesión"
+              >
+                🔒
+              </button>
+            </div>
+          </header>
+
+          <main className="flex-1 p-3.5 max-w-xl mx-auto w-full space-y-4">
+            {/* VISTA: INVENTARIO */}
+            {currentView === 'inventory' && (
+              <div className="space-y-4">
+                <div className="bg-white border border-arena rounded-3xl p-4.5 shadow-sm space-y-3">
+                  <div className="flex justify-between items-start">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-salviaDark flex items-center gap-1">
+                      ✨ SoftStock · Streaming Hub
+                    </span>
+                    <span className="text-[10px] text-textoMuted">Gestión Privada de Cuentas & Pantallas</span>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg font-bold text-texto">Inventario de Streaming & Precios</h3>
+                    <p className="text-xs text-textoMuted">Control diario de perfiles, cotizaciones de proveedores y márgenes de ganancia.</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5 pt-1 font-mono-numbers">
+                    <div className="bg-salviaSuave/60 border border-salvia/30 rounded-2xl p-3">
+                      <span className="text-[11px] font-sans text-salviaDark flex items-center gap-1 font-medium">
+                        🌿 Pantallas en Stock
+                      </span>
+                      <p className="text-lg font-bold text-texto mt-0.5">{metrics.totalScreens} disponibles</p>
+                    </div>
+
+                    <div className="bg-salviaSuave/60 border border-salvia/30 rounded-2xl p-3">
+                      <span className="text-[11px] font-sans text-salviaDark flex items-center gap-1 font-medium">
+                        🌸 Ganancia Potencial
+                      </span>
+                      <p className="text-lg font-bold text-salviaDark mt-0.5">+{formatMXN(metrics.potentialProfit)} MXN</p>
+                    </div>
+
+                    <div className="bg-[#FFF8F3] border border-durazno/50 rounded-2xl p-3">
+                      <span className="text-[11px] font-sans text-terracota flex items-center gap-1 font-medium">
+                        🍂 Por terminarse
+                      </span>
+                      <p className="text-base font-bold text-texto mt-0.5">{metrics.lowStockCount} alertas</p>
+                    </div>
+
+                    <div className="bg-[#FFF8F3] border border-durazno/50 rounded-2xl p-3">
+                      <span className="text-[11px] font-sans text-terracota flex items-center gap-1 font-medium">
+                        🍂 Pausa temporal
+                      </span>
+                      <p className="text-base font-bold text-texto mt-0.5">{metrics.outOfStockCount} agotados</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <span className="absolute left-3.5 top-2.5 text-xs text-textoMuted">🔍</span>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder="Buscar servicio, proveedor, código..."
+                    className="w-full bg-white border border-arena rounded-2xl pl-9 pr-3.5 py-2 text-xs focus:outline-none shadow-sm"
+                  />
+                </div>
+
+                <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar text-xs">
+                  <button onClick={() => setCurrentView('providers')} className="bg-moradoPastel border border-moradoBorde px-3 py-1.5 rounded-xl font-medium whitespace-nowrap">
+                    ☁️ Proveedores & Lotes
+                  </button>
+                  <button onClick={() => setShowTicketModal(true)} className="bg-white border border-arena px-3 py-1.5 rounded-xl font-medium whitespace-nowrap">
+                    🧾 Ticket
+                  </button>
+                  <button onClick={() => setShowCashClose(true)} className="bg-salviaSuave border border-salvia/30 text-salviaDark px-3 py-1.5 rounded-xl font-medium whitespace-nowrap">
+                    🌙 Cierre
+                  </button>
+                  <button onClick={() => setShowSettingsModal(true)} className="bg-white border border-arena px-3 py-1.5 rounded-xl font-medium whitespace-nowrap">
+                    🎨 Cambiar Logo / Foto
+                  </button>
+                </div>
+
+                <div className="grid gap-2.5 pt-1">
+                  {filteredProducts.map(p => {
+                    const profit = p.price - p.cost;
+                    const margin = p.price > 0 ? ((profit / p.price) * 100).toFixed(0) : 0;
+                    return (
+                      <div key={p.id} className="bg-white border border-arena rounded-2xl p-3.5 shadow-sm space-y-2">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-semibold text-sm text-texto">{p.name}</h4>
+                            <p className="text-[11px] text-textoMuted mt-0.5">🌾 {p.category} · Prov: {p.provider}</p>
+                          </div>
+                          <button onClick={() => { setEditingProduct(p); setShowProductModal(true); }} className="text-xs text-textoMuted p-1">✏️</button>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs pt-2 border-t border-arena/70 font-mono-numbers">
+                          <div className="space-x-2">
+                            <span>Venta: <strong className="text-texto font-bold">{formatMXN(p.price)}</strong></span>
+                            <span className="text-textoMuted">Costo: {formatMXN(p.cost)}</span>
+                            <span className="text-salviaDark font-semibold">+{formatMXN(profit)} ({margin}%)</span>
+                          </div>
+                          <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${p.stock === 0 ? 'bg-terracota/10 text-terracota' : 'bg-salviaSuave text-salviaDark'}`}>
+                            {p.stock === 0 ? 'Agotado' : `${p.stock} disp.`}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* VISTA: PROVEEDORES */}
+            {currentView === 'providers' && (
+              <div className="space-y-4">
+                <div className="bg-white border border-arena rounded-3xl p-4.5 shadow-sm space-y-3">
+                  <div className="flex justify-between items-start">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-salviaDark">
+                      📚 Lotes de Mayoristas & Comparativas
+                    </span>
+                    <button onClick={() => setCurrentView('inventory')} className="text-xs text-textoMuted underline">Volver a Inventario</button>
+                  </div>
+                  <h3 className="text-lg font-bold text-texto">Stock Completo de Proveedores</h3>
+                  <button
+                    onClick={() => setShowNewProviderModal(true)}
+                    className="w-full bg-[#3D3A37] text-white py-2.5 rounded-2xl text-xs font-semibold shadow-sm"
+                  >
+                    + Nuevo Proveedor / Guardar Stock Completo
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 hide-scrollbar">
+                  {providers.map((p, idx) => (
+                    <button
+                      key={p.id}
+                      onClick={() => setSelectedProviderIndex(idx)}
+                      className={`px-3 py-1.5 rounded-2xl border text-xs font-medium whitespace-nowrap ${
+                        selectedProviderIndex === idx ? 'bg-white border-texto font-bold shadow-sm' : 'bg-white/70 border-arena text-textoMuted'
+                      }`}
+                    >
+                      🌿 {p.name}
+                    </button>
+                  ))}
+                </div>
+
+                {providers[selectedProviderIndex] && (
+                  <div className="bg-white border border-arena rounded-3xl p-4 shadow-sm space-y-3">
+                    <div>
+                      <h4 className="font-bold text-sm text-texto">{providers[selectedProviderIndex].name}</h4>
+                      <p className="text-xs text-textoMuted mt-1">{providers[selectedProviderIndex].channel}</p>
+                    </div>
+
+                    <div className="space-y-2 pt-2 border-t border-arena">
+                      {providers[selectedProviderIndex].catalog.map((item, i) => (
+                        <div key={i} className="flex items-center justify-between p-2.5 rounded-2xl bg-lino border border-arena text-xs">
+                          <div>
+                            <span className="font-semibold text-texto">{item.service}</span>
+                            <div className="text-[11px] text-textoMuted font-mono-numbers">
+                              Costo: {formatMXN(item.cost)} · Stock: {item.stock}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setProducts(prev => {
+                                const idx = prev.findIndex(p => p.name.toLowerCase() === item.service.toLowerCase());
+                                if (idx !== -1) {
+                                  const u = [...prev];
+                                  u[idx].stock += item.stock;
+                                  u[idx].cost = item.cost;
+                                  return u;
+                                } else {
+                                  return [{
+                                    id: Date.now().toString(),
+                                    name: item.service,
+                                    code: `CC-${Math.floor(1000 + Math.random() * 9000)}`,
+                                    category: 'Perfiles / Pantallas',
+                                    type: 'Streaming',
+                                    stock: item.stock,
+                                    price: Math.round(item.cost * 1.6),
+                                    cost: item.cost,
+                                    provider: providers[selectedProviderIndex].name
+                                  }, ...prev];
+                                }
+                              });
+                              alert(`"${item.service}" transferido a tu inventario activo.`);
+                            }}
+                            className="bg-white border border-arena text-salviaDark px-2.5 py-1 rounded-xl text-[11px] font-semibold"
+                          >
+                            ➔ Pasar a mi Inventario
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </main>
+
+          {/* BARRA INFERIOR */}
+          <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-arena px-4 py-2 flex justify-around z-30">
+            <button
+              onClick={() => setCurrentView('inventory')}
+              className={`text-xs py-1 px-3 rounded-xl transition ${
+                currentView === 'inventory' ? 'text-salviaDark font-bold bg-salviaSuave' : 'text-textoMuted'
+              }`}
+            >
+              🌿 Inventario
+            </button>
+            <button
+              onClick={() => setCurrentView('providers')}
+              className={`text-xs py-1 px-3 rounded-xl transition ${
+                currentView === 'providers' ? 'text-salviaDark font-bold bg-salviaSuave' : 'text-textoMuted'
+              }`}
+            >
+              ☁ Proveedores & Lotes
+            </button>
+            <button
+              onClick={() => setShowSettingsModal(true)}
+              className="text-xs py-1 px-3 rounded-xl text-textoMuted hover:text-texto"
+            >
+              🎨 Personalizar
+            </button>
+          </nav>
+
+          {/* MODAL DE AJUSTES & PERSONALIZACIÓN DE FOTO Y LOGO */}
+          {showSettingsModal && (
+            <div className="fixed inset-0 bg-texto/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white border border-arena rounded-3xl p-5 max-w-sm w-full space-y-4 shadow-xl max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-center border-b border-arena pb-2">
+                  <h3 className="font-bold text-sm">Personalizar Tienda, Logo & Fotos</h3>
+                  <button onClick={() => setShowSettingsModal(false)} className="text-textoMuted font-bold text-sm">✕</button>
+                </div>
+
+                {/* 1. SECCIÓN DE LOGO PERSONALIZADO */}
+                <div className="bg-lino border border-arena rounded-2xl p-3.5 space-y-2.5 text-xs">
+                  <span className="font-bold text-xs text-texto block">1. Logo de la Cabecera y Tienda</span>
+                  <p className="text-[11px] text-textoMuted">
+                    Sube una imagen de tu logo (PNG o JPG) desde tu iPhone o elige un emoji.
+                  </p>
+
+                  <div className="flex items-center gap-3">
+                    <div className="w-14 h-14 rounded-2xl bg-white border border-arena flex items-center justify-center shadow-sm overflow-hidden p-1">
+                      <RenderLogo className="w-full h-full" />
+                    </div>
+
+                    <div className="flex-1 space-y-1.5">
+                      <label className="cursor-pointer bg-white border border-arena text-texto px-3 py-1.5 rounded-xl text-[11px] font-semibold block text-center shadow-sm active:bg-arena">
+                        ⬆️ Subir logo desde mi iPhone
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={e => handleImageUpload(e.target.files[0], res => {
+                            setConfig(prev => ({ ...prev, logoType: 'image', logoValue: res }));
+                          })}
+                        />
+                      </label>
+
+                      <div className="flex gap-1">
+                        <input
+                          type="text"
+                          value={config.logoType === 'emoji' ? config.logoValue : ''}
+                          onChange={e => setConfig(prev => ({ ...prev, logoType: 'emoji', logoValue: e.target.value }))}
+                          placeholder="O escribe emoji (🌿, 🍿, 🎬)..."
+                          className="w-full bg-white border border-arena rounded-xl p-1.5 text-xs text-center focus:outline-none"
+                        />
+                        {config.logoType === 'image' && (
+                          <button
+                            onClick={() => setConfig(prev => ({ ...prev, logoType: 'emoji', logoValue: '🌿' }))}
+                            className="bg-white border border-arena text-terracota px-2 rounded-xl text-[10px]"
+                            title="Quitar foto y usar emoji"
+                          >
+                            Reset
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. SECCIÓN DE FOTOGRAFÍA DE INICIO (PANTALLA DE BLOQUEO) */}
+                <div className="bg-lino border border-arena rounded-2xl p-3.5 space-y-2.5 text-xs">
+                  <span className="font-bold text-xs text-texto block">2. Fotografía de Inicio (Pantalla de Bloqueo)</span>
+                  <p className="text-[11px] text-textoMuted">
+                    La imagen grande que aparece al inicio antes de ingresar el PIN.
+                  </p>
+
+                  <div className="flex items-center gap-3">
+                    <div className="w-16 h-16 rounded-2xl overflow-hidden border border-arena bg-arenaBorde shadow-sm">
+                      <img src={config.coverUrl} alt="Portada" className="w-full h-full object-cover" />
+                    </div>
+
+                    <div className="flex-1 space-y-1.5">
+                      <label className="cursor-pointer bg-white border border-arena text-texto px-3 py-1.5 rounded-xl text-[11px] font-semibold block text-center shadow-sm active:bg-arena">
+                        ⬆️ Subir foto desde mi iPhone
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={e => handleImageUpload(e.target.files[0], res => setConfig(prev => ({ ...prev, coverUrl: res })))}
+                        />
+                      </label>
+                      <button
+                        onClick={() => setConfig(prev => ({ ...prev, coverUrl: INITIAL_CONFIG.coverUrl }))}
+                        className="text-[10px] text-terracota underline block mx-auto"
+                      >
+                        Restablecer foto original
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Presets rápidos */}
+                  <div>
+                    <span className="text-[10px] text-textoMuted block mb-1">O elige una foto sugerida:</span>
+                    <div className="flex gap-2">
+                      {PRESET_COVERS.map(pr => (
+                        <button
+                          key={pr.id}
+                          onClick={() => setConfig(prev => ({ ...prev, coverUrl: pr.url }))}
+                          className={`flex-1 p-1.5 rounded-xl border text-[11px] font-medium ${
+                            config.coverUrl === pr.url ? 'bg-white border-salvia text-salviaDark font-bold' : 'bg-white/60 border-arena text-textoMuted'
+                          }`}
+                        >
+                          {pr.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <input
+                    type="text"
+                    value={config.coverUrl}
+                    onChange={e => setConfig(prev => ({ ...prev, coverUrl: e.target.value }))}
+                    placeholder="O pega un enlace web (URL) de imagen..."
+                    className="w-full bg-white border border-arena rounded-xl p-1.5 text-[11px] focus:outline-none"
+                  />
+                </div>
+
+                {/* 3. DATOS DE TIENDA Y PIN */}
+                <div className="bg-lino border border-arena rounded-2xl p-3.5 space-y-2 text-xs">
+                  <div>
+                    <label className="text-textoMuted font-semibold">Nombre de la Tienda:</label>
+                    <input
+                      value={config.storeName}
+                      onChange={e => setConfig(prev => ({ ...prev, storeName: e.target.value }))}
+                      className="w-full bg-white border border-arena rounded-xl p-2 mt-0.5 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-textoMuted font-semibold">Lema o Descripción:</label>
+                    <input
+                      value={config.tagline}
+                      onChange={e => setConfig(prev => ({ ...prev, tagline: e.target.value }))}
+                      className="w-full bg-white border border-arena rounded-xl p-2 mt-0.5 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-textoMuted font-semibold">PIN de Desbloqueo (4 dígitos):</label>
+                    <input
+                      type="password"
+                      maxLength={4}
+                      value={config.pin}
+                      onChange={e => setConfig(prev => ({ ...prev, pin: e.target.value }))}
+                      className="w-full bg-white border border-arena rounded-xl p-2 mt-0.5 font-mono-numbers text-center font-bold tracking-widest focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setShowSettingsModal(false);
+                    alert('¡Diseño y ajustes actualizados con éxito!');
+                  }}
+                  className="w-full bg-salviaDark text-white py-2.5 rounded-2xl text-xs font-semibold shadow-sm"
+                >
+                  Guardar Todo
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL TICKET */}
+          {showTicketModal && (
+            <div className="fixed inset-0 bg-texto/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white border border-arena rounded-3xl p-5 max-w-sm w-full space-y-3.5 shadow-xl max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-center border-b border-arena pb-2">
+                  <h3 className="text-base font-bold text-texto">Ticket de Compra Digital</h3>
+                  <button onClick={() => setShowTicketModal(false)} className="text-textoMuted font-bold text-sm">✕</button>
+                </div>
+
+                <div className="space-y-2 text-xs">
+                  <input value={ticketClient} onChange={e => setTicketClient(e.target.value)} placeholder="Cliente" className="w-full bg-lino border border-arena rounded-xl p-2 focus:outline-none" />
+                  <input value={ticketService} onChange={e => setTicketService(e.target.value)} placeholder="Servicio" className="w-full bg-lino border border-arena rounded-xl p-2 focus:outline-none" />
+                  <input type="number" value={ticketAmount} onChange={e => setTicketAmount(e.target.value)} placeholder="Monto" className="w-full bg-lino border border-arena rounded-xl p-2 font-mono-numbers focus:outline-none" />
+                  <input value={ticketAccess} onChange={e => setTicketAccess(e.target.value)} placeholder="PIN / Acceso" className="w-full bg-lino border border-arena rounded-xl p-2 focus:outline-none" />
+                </div>
+
+                <div className="bg-lino border border-arena rounded-2xl p-3 text-[11px] font-mono whitespace-pre-line leading-relaxed text-texto">
+                  {ticketPreviewText}
+                </div>
+
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(ticketPreviewText)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full bg-salviaDark text-white py-2.5 rounded-2xl text-xs font-semibold flex items-center justify-center gap-1.5"
+                >
+                  Enviar directo por WhatsApp
+                </a>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL CIERRE */}
+          {showCashClose && (
+            <div className="fixed inset-0 bg-texto/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white border border-arena rounded-3xl p-5 max-w-sm w-full space-y-4 shadow-xl">
+                <div className="flex justify-between items-center border-b border-arena pb-2">
+                  <h3 className="font-bold text-sm">Cierre de Caja Diario</h3>
+                  <button onClick={() => setShowCashClose(false)} className="text-textoMuted font-bold">✕</button>
+                </div>
+                <div className="space-y-2 font-mono-numbers text-xs">
+                  <div className="flex justify-between py-1 border-b border-arena">
+                    <span className="font-sans text-textoMuted">Pantallas en Stock:</span>
+                    <strong>{metrics.totalScreens}</strong>
+                  </div>
+                  <div className="flex justify-between py-2 text-sm">
+                    <span className="font-sans font-bold text-salviaDark">Ganancia Estimada:</span>
+                    <strong className="text-salviaDark">+{formatMXN(metrics.potentialProfit)} MXN</strong>
+                  </div>
+                </div>
+                <button onClick={() => setShowCashClose(false)} className="w-full bg-salviaDark text-white py-2 rounded-2xl text-xs font-semibold">
+                  Aceptar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL NUEVO PROVEEDOR */}
+          {showNewProviderModal && (
+            <div className="fixed inset-0 bg-texto/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white border border-arena rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-xl">
+                <div className="flex justify-between items-center border-b border-arena pb-2">
+                  <h3 className="font-bold text-sm">Nuevo Proveedor / Stock Completo</h3>
+                  <button onClick={() => setShowNewProviderModal(false)} className="text-textoMuted font-bold">✕</button>
+                </div>
+                <div className="space-y-2 text-xs">
+                  <input value={newProvName} onChange={e => setNewProvName(e.target.value)} placeholder="Nombre del mayorista" className="w-full bg-lino border border-arena rounded-xl p-2 focus:outline-none" />
+                  <input value={newProvContact} onChange={e => setNewProvContact(e.target.value)} placeholder="Telegram / WhatsApp" className="w-full bg-lino border border-arena rounded-xl p-2 focus:outline-none" />
+                  <textarea rows={4} value={rawBatchText} onChange={e => setRawBatchText(e.target.value)} placeholder="Pega el mensaje con cuentas y precios..." className="w-full bg-lino border border-arena rounded-xl p-2 focus:outline-none font-mono-numbers" />
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => setShowNewProviderModal(false)} className="flex-1 bg-lino border border-arena py-2 rounded-xl text-xs">Cancelar</button>
+                  <button
+                    onClick={() => {
+                      if (!newProvName.trim()) return alert('Escribe el nombre del proveedor');
+                      const items = [];
+                      if (rawBatchText.trim()) {
+                        rawBatchText.split('\n').forEach(l => {
+                          const pM = l.match(/(\$|\bcosto:?\s*|\bprecio:?\s*)(\d+(\.\d+)?)/i) || l.match(/(\d+(\.\d+)?)\s*(mxn|pesos)?$/i);
+                          const sM = l.match(/(\d+)\s*(u|disp|perfiles)/i);
+                          const cost = pM ? parseFloat(pM[2] || pM[1]) : 25;
+                          const stock = sM ? parseInt(sM[1], 10) : 5;
+                          let s = l.replace(/(\$|\bcosto:?\s*|\bprecio:?\s*)\d+(\.\d+)?/gi, '').replace(/(\d+)\s*(u|disp|perfiles)/gi, '').replace(/[-–—:*•]/g, '').trim();
+                          if (s.length > 2) items.push({ service: s, cost, stock });
+                        });
+                      }
+                      setProviders(prev => [{ id: Date.now().toString(), name: newProvName.trim(), channel: newProvContact.trim() || 'Directo', catalog: items }, ...prev]);
+                      setShowNewProviderModal(false);
+                      setNewProvName(''); setNewProvContact(''); setRawBatchText('');
+                    }}
+                    className="flex-1 bg-salviaDark text-white py-2 rounded-xl text-xs font-semibold"
+                  >
+                    Guardar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL PRODUCTO */}
+          {showProductModal && (
+            <div className="fixed inset-0 bg-texto/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white border border-arena rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-xl">
+                <div className="flex justify-between items-center border-b border-arena pb-2">
+                  <h3 className="font-bold text-sm">{editingProduct ? 'Editar Servicio' : 'Nuevo Servicio'}</h3>
+                  <button onClick={() => setShowProductModal(false)} className="text-textoMuted font-bold">✕</button>
+                </div>
+                <form onSubmit={e => {
+                  e.preventDefault();
+                  const f = e.target;
+                  const name = f.pName.value.trim();
+                  const stock = parseInt(f.pStock.value, 10);
+                  const price = parseFloat(f.pPrice.value);
+                  const cost = parseFloat(f.pCost.value);
+                  const provider = f.pProv.value.trim() || 'General';
+
+                  if (editingProduct) {
+                    setProducts(prev => prev.map(p => p.id === editingProduct.id ? { ...p, name, stock, price, cost, provider } : p));
+                  } else {
+                    setProducts(prev => [{ id: Date.now().toString(), name, code: `CC-${Math.floor(1000 + Math.random() * 9000)}`, category: 'Perfiles / Pantallas', type: 'Streaming', stock, price, cost, provider }, ...prev]);
+                  }
+                  setShowProductModal(false);
+                }} className="space-y-2.5 text-xs">
+                  <input name="pName" defaultValue={editingProduct?.name || ''} required placeholder="Nombre servicio" className="w-full bg-lino border border-arena rounded-xl p-2 focus:outline-none" />
+                  <input name="pProv" defaultValue={editingProduct?.provider || 'Proveedor Alex'} placeholder="Proveedor" className="w-full bg-lino border border-arena rounded-xl p-2 focus:outline-none" />
+                  <div className="grid grid-cols-3 gap-2 font-mono-numbers">
+                    <input type="number" name="pStock" defaultValue={editingProduct?.stock ?? 5} placeholder="Stock" className="w-full bg-lino border border-arena rounded-xl p-2 focus:outline-none" />
+                    <input type="number" name="pPrice" defaultValue={editingProduct?.price || 85} placeholder="Venta" className="w-full bg-lino border border-arena rounded-xl p-2 focus:outline-none" />
+                    <input type="number" name="pCost" defaultValue={editingProduct?.cost || 40} placeholder="Costo" className="w-full bg-lino border border-arena rounded-xl p-2 focus:outline-none" />
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <button type="button" onClick={() => setShowProductModal(false)} className="flex-1 bg-lino border border-arena py-2 rounded-xl">Cancelar</button>
+                    <button type="submit" className="flex-1 bg-salviaDark text-white py-2 rounded-xl font-semibold">Guardar</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
