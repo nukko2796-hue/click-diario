@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>click&cut · Tu Tienda Digital</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            lino: '#FAF7F2',
+            arena: '#EBE3D5',
+            arenaDark: '#D8CDBA',
+            salvia: '#7DB59A',
+            salviaDark: '#2E6B4B',
+            terracota: '#B95D55',
+            durazno: '#F5C2A5',
+            marfil: '#FFFFFF',
+            texto: '#2C2B2A',
+            textoMuted: '#7A7571'
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  
+  <!-- Babel Standalone -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    body {
+      background-color: #FAF7F2;
+      color: #2C2B2A;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .font-mono-numbers {
+      font-variant-numeric: tabular-nums;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+  </style>
+</head>
+<body class="selection:bg-durazno selection:text-texto">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+
+    const INITIAL_PRODUCTS = [
+      { id: '1', name: 'Netflix Premium (Perfil)', category: 'Streaming', stock: 5, price: 65, cost: 35 },
+      { id: '2', name: 'Disney+ Estándar (Perfil)', category: 'Streaming', stock: 2, price: 45, cost: 20 },
+      { id: '3', name: 'Max Platino (Perfil)', category: 'Streaming', stock: 1, price: 50, cost: 25 },
+      { id: '4', name: 'Spotify Individual (Cuenta)', category: 'Música', stock: 8, price: 55, cost: 28 },
+      { id: '5', name: 'Amazon Prime Video (Perfil)', category: 'Streaming', stock: 0, price: 40, cost: 18 }
+    ];
+
+    const INITIAL_IDEAS = [
+      {
+        id: '1',
+        title: 'Promo Flash de Alex (Fin de Semana)',
+        provider: 'Alex Streaming',
+        content: 'Netflix 4 pantallas completas a $130 MXN (si compro 3 cuentas). Podría vender cada perfil a $55 y dejar margen de $90 limpios por cuenta.',
+        serviceRef: 'Netflix Premium (Perfil)',
+        proposedCost: 32.5,
+        proposedPrice: 55,
+        tag: 'Oferta Mayorista',
+        date: '2026-10-01'
+      },
+      {
+        id: '2',
+        title: 'Idea Combo Dúo (Disney + Max)',
+        provider: 'Estrategia Propia',
+        content: 'Armar paquete "Cine en Casa": Disney ($20 costo) + Max ($25 costo) = $45 costo total. Ofrecer el combo a $85 MXN para ganar $40 por combo.',
+        serviceRef: '',
+        proposedCost: 45,
+        proposedPrice: 85,
+        tag: 'Combo / Promo',
+        date: '2026-10-02'
+      }
+    ];
+
+    const INITIAL_SUBSCRIPTIONS = [
+      { id: '1', client: 'Carlos Mendoza', phone: '528611234567', service: 'Netflix Premium (Perfil)', profile: 'Perfil 1 (PIN 1234)', endDate: '2026-10-05', price: 65, cost: 35 },
+      { id: '2', client: 'Mariana Reyes', phone: '528619876543', service: 'Disney+ Estándar (Perfil)', profile: 'Perfil 3', endDate: '2026-10-02', price: 45, cost: 20 },
+      { id: '3', client: 'Luis Garza', phone: '528615554321', service: 'Max Platino (Perfil)', profile: 'Perfil Adulto', endDate: '2026-10-18', price: 50, cost: 25 }
+    ];
+
+    const INITIAL_PROVIDERS = [
+      {
+        id: '1',
+        name: 'Mayorista Alex Streaming',
+        channel: 'WhatsApp (+52 1 81 2345 6789)',
+        notes: 'Garantía inmediata de 30 días, responde rápido por las tardes.',
+        catalog: [
+          { service: 'Netflix Premium (Perfil)', cost: 35, stock: 12 },
+          { service: 'Disney+ Estándar (Perfil)', cost: 20, stock: 8 },
+          { service: 'Max Platino (Perfil)', cost: 26, stock: 5 },
+          { service: 'Spotify Individual (Cuenta)', cost: 30, stock: 15 }
+        ]
+      },
+      {
+        id: '2',
+        name: 'Digital Express Pro',
+        channel: 'Telegram (@DigitalExpressOficial)',
+        notes: 'Pagar con transferencia antes de las 6 PM.',
+        catalog: [
+          { service: 'Netflix Premium (Perfil)', cost: 33, stock: 20 },
+          { service: 'Disney+ Estándar (Perfil)', cost: 22, stock: 10 },
+          { service: 'Max Platino (Perfil)', cost: 24, stock: 14 },
+          { service: 'Amazon Prime Video (Perfil)', cost: 18, stock: 9 }
+        ]
+      }
+    ];
+
+    const DEFAULT_PRESET_IMAGES = [
+      { label: 'Botánica Calma', url: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&w=1200&q=80' },
+      { label: 'Lino Minimal', url: 'https://images.unsplash.com/photo-1507652313519-d4e9174996dd?auto=format&fit=crop&w=1200&q=80' },
+      { label: 'Atmósfera Streaming', url: 'https://images.unsplash.com/photo-1522869635100-9f4c5e86aa37?auto=format&fit=crop&w=1200&q=80' }
+    ];
+
+    const formatMXN = (val) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(val);
+
+    function App() {
+      const [pin, setPin] = useState(() => localStorage.getItem('cnc_pin') || '2408');
+      const [isLocked, setIsLocked] = useState(true);
+      const [coverImage, setCoverImage] = useState(() => localStorage.getItem('cnc_cover') || DEFAULT_PRESET_IMAGES[0].url);
+      
+      const [products, setProducts] = useState(() => {
+        const local = localStorage.getItem('cnc_products');
+        return local ? JSON.parse(local) : INITIAL_PRODUCTS;
+      });
+
+      const [ideas, setIdeas] = useState(() => {
+        const local = localStorage.getItem('cnc_ideas');
+        return local ? JSON.parse(local) : INITIAL_IDEAS;
+      });
+
+      const [subscriptions, setSubscriptions] = useState(() => {
+        const local = localStorage.getItem('cnc_subscriptions');
+        return local ? JSON.parse(local) : INITIAL_SUBSCRIPTIONS;
+      });
+
+      const [providers, setProviders] = useState(() => {
+        const local = localStorage.getItem('cnc_providers');
+        return local ? JSON.parse(local) : INITIAL_PROVIDERS;
+      });
+
+      const [logs, setLogs] = useState(() => {
+        const local = localStorage.getItem('cnc_logs');
+        return local ? JSON.parse(local) : [
+          { id: '1', date: new Date().toISOString(), type: 'Altas', desc: 'Sistema Click&Cut inicializado con éxito', amount: 0, profit: 0 }
+        ];
+      });
+
+      // Pestaña activa
+      const [tab, setTab] = useState('inventory'); // inventory | ideas | providers | renewals | logs | settings
+      
+      const [pinInput, setPinInput] = useState('');
+      const [pinError, setPinError] = useState(false);
+      const [showCashClose, setShowCashClose] = useState(false);
+      const [showClientCatalog, setShowClientCatalog] = useState(false);
+      const [showProductModal, setShowProductModal] = useState(false);
+      const [editingProduct, setEditingProduct] = useState(null);
+
+      // Estado del Formulario de Ideas & Notas
+      const [showIdeaModal, setShowIdeaModal] = useState(false);
+      const [ideaForm, setIdeaForm] = useState({
+        title: '',
+        provider: '',
+        content: '',
+        serviceRef: '',
+        proposedCost: '',
+        proposedPrice: '',
+        tag: 'Oferta Mayorista'
+      });
+      
+      // Simulador de precios rápido en Notas
+      const [simCost, setSimCost] = useState(30);
+      const [simPrice, setSimPrice] = useState(60);
+
+      // Parser de proveedores
+      const [rawPasteText, setRawPasteText] = useState('');
+      const [selectedProviderId, setSelectedProviderId] = useState('');
+
+      // Comandos rápidos
+      const [commandInput, setCommandInput] = useState('');
+      const [commandFeedback, setCommandFeedback] = useState('');
+
+      // Sincronización persistente
+      useEffect(() => localStorage.setItem('cnc_pin', pin), [pin]);
+      useEffect(() => localStorage.setItem('cnc_cover', coverImage), [coverImage]);
+      useEffect(() => localStorage.setItem('cnc_products', JSON.stringify(products)), [products]);
+      useEffect(() => localStorage.setItem('cnc_ideas', JSON.stringify(ideas)), [ideas]);
+      useEffect(() => localStorage.setItem('cnc_subscriptions', JSON.stringify(subscriptions)), [subscriptions]);
+      useEffect(() => localStorage.setItem('cnc_providers', JSON.stringify(providers)), [providers]);
+      useEffect(() => localStorage.setItem('cnc_logs', JSON.stringify(logs)), [logs]);
+
+      const addLog = (type, desc, amount = 0, profit = 0) => {
+        const newLog = {
+          id: Date.now().toString(),
+          date: new Date().toISOString(),
+          type,
+          desc,
+          amount: Number(amount),
+          profit: Number(profit)
+        };
+        setLogs(prev => [newLog, ...prev]);
+      };
+
+      const handlePinKeyPress = (digit) => {
+        if (pinInput.length < 4) {
+          const nextPin = pinInput + digit;
+          setPinInput(nextPin);
+          if (nextPin.length === 4) {
+            if (nextPin === pin) {
+              setIsLocked(false);
+              setPinInput('');
+              setPinError(false);
+            } else {
+              setPinError(true);
+              setTimeout(() => {
+                setPinInput('');
+                setPinError(false);
+              }, 700);
+            }
+          }
+        }
+      };
+
+      // Guardar nueva nota / idea
+      const handleSaveIdea = (e) => {
+        e.preventDefault();
+        if (!ideaForm.title.trim() && !ideaForm.content.trim()) return;
+
+        const newIdea = {
+          id: Date.now().toString(),
+          title: ideaForm.title.trim() || 'Nota de Precios',
+          provider: ideaForm.provider.trim() || 'Varios / General',
+          content: ideaForm.content.trim(),
+          serviceRef: ideaForm.serviceRef,
+          proposedCost: parseFloat(ideaForm.proposedCost) || 0,
+          proposedPrice: parseFloat(ideaForm.proposedPrice) || 0,
+          tag: ideaForm.tag,
+          date: new Date().toISOString().split('T')[0]
+        };
+
+        setIdeas(prev => [newIdea, ...prev]);
+        setShowIdeaModal(false);
+        setIdeaForm({ title: '', provider: '', content: '', serviceRef: '', proposedCost: '', proposedPrice: '', tag: 'Oferta Mayorista' });
+        addLog('Altas', `Nota estratégica creada: "${newIdea.title}"`);
+      };
+
+      // Aplicar una idea directamente al inventario activo
+      const handleApplyIdeaToInventory = (idea) => {
+        if (!idea.proposedPrice || !idea.proposedCost) {
+          alert('Esta nota no tiene costo y precio de venta numérico especificado.');
+          return;
+        }
+
+        const targetName = idea.serviceRef || idea.title;
+        setProducts(prev => {
+          const idx = prev.findIndex(p => p.name.toLowerCase() === targetName.toLowerCase());
+          if (idx !== -1) {
+            const updated = [...prev];
+            updated[idx].cost = idea.proposedCost;
+            updated[idx].price = idea.proposedPrice;
+            addLog('Precios', `Actualizados precios de "${targetName}" desde Notas (Costo: $${idea.proposedCost}, Venta: $${idea.proposedPrice})`);
+            return updated;
+          } else {
+            const newP = {
+              id: Date.now().toString(),
+              name: targetName,
+              category: 'Streaming',
+              stock: 1,
+              price: idea.proposedPrice,
+              cost: idea.proposedCost
+            };
+            addLog('Altas', `Servicio agregado desde Notas: "${targetName}"`);
+            return [...prev, newP];
+          }
+        });
+
+        alert(`¡Listo! Los precios de "${targetName}" se aplicaron a tu inventario.`);
+      };
+
+      // Eliminar nota
+      const handleDeleteIdea = (id) => {
+        if (confirm('¿Deseas eliminar esta nota?')) {
+          setIdeas(prev => prev.filter(i => i.id !== id));
+        }
+      };
+
+      const handleRenewSubscription = (sub) => {
+        const currentEnd = new Date(sub.endDate);
+        const baseDate = currentEnd > new Date() ? currentEnd : new Date();
+        baseDate.setDate(baseDate.getDate() + 30);
+        const newDateStr = baseDate.toISOString().split('T')[0];
+
+        setSubscriptions(prev => prev.map(s => s.id === sub.id ? { ...s, endDate: newDateStr } : s));
+        const profit = sub.price - sub.cost;
+        addLog('Ventas', `Renovación: ${sub.service} (${sub.client})`, sub.price, profit);
+        alert(`¡Renovación exitosa! Nueva fecha: ${newDateStr}`);
+      };
+
+      const handleSaveProduct = (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const name = form.prodName.value.trim();
+        const category = form.prodCategory.value.trim();
+        const stock = parseInt(form.prodStock.value, 10);
+        const price = parseFloat(form.prodPrice.value);
+        const cost = parseFloat(form.prodCost.value);
+
+        if (editingProduct) {
+          setProducts(prev => prev.map(p => p.id === editingProduct.id ? { ...p, name, category, stock, price, cost } : p));
+          addLog('Precios', `Modificación: ${name} (Stock: ${stock})`);
+        } else {
+          const newProd = { id: Date.now().toString(), name, category, stock, price, cost };
+          setProducts(prev => [...prev, newProd]);
+          addLog('Altas', `Nuevo producto: ${name}`, 0, 0);
+        }
+        setShowProductModal(false);
+        setEditingProduct(null);
+      };
+
+      const handleExecuteCommand = (e) => {
+        e.preventDefault();
+        const cmd = commandInput.trim().toLowerCase();
+        if (!cmd) return;
+
+        if (cmd === 'bloquear' || cmd === 'lock') {
+          setIsLocked(true);
+          setCommandInput('');
+          return;
+        }
+
+        if (cmd.startsWith('nota ') || cmd.startsWith('idea ')) {
+          const noteText = cmd.replace(/^(nota|idea)\s+/, '');
+          const newN = {
+            id: Date.now().toString(),
+            title: 'Nota rápida por comando',
+            provider: 'Estrategia',
+            content: noteText,
+            serviceRef: '',
+            proposedCost: 0,
+            proposedPrice: 0,
+            tag: 'Idea Rápida',
+            date: new Date().toISOString().split('T')[0]
+          };
+          setIdeas(prev => [newN, ...prev]);
+          setCommandFeedback(`Nota guardada en tu sección de Notas.`);
+        } else if (cmd.includes('cierre') || cmd.includes('caja')) {
+          setShowCashClose(true);
+          setCommandFeedback('Abriendo resumen de cierre de caja...');
+        } else {
+          setCommandFeedback('Comandos: "bloquear", "nota [tu idea aquí]", "cierre de caja"');
+        }
+        setCommandInput('');
+      };
+
+      const cashCloseSummary = useMemo(() => {
+        const now = new Date();
+        const oneDayAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000));
+        const recentLogs = logs.filter(l => new Date(l.date) >= oneDayAgo && l.type === 'Ventas');
+        const totalIncome = recentLogs.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+        const totalProfit = recentLogs.reduce((acc, curr) => acc + (curr.profit || 0), 0);
+        const totalCost = totalIncome - totalProfit;
+        return { count: recentLogs.length, totalIncome, totalCost, totalProfit };
+      }, [logs]);
+
+      // Cálculos del simulador de precios
+      const simProfit = simPrice - simCost;
+      const simMargin = simPrice > 0 ? ((simProfit / simPrice) * 100).toFixed(0) : 0;
+
+      if (isLocked) {
+        return (
+          <div className="min-h-screen bg-lino flex flex-col justify-between items-center p-6 relative select-none">
+            <div className="w-full max-w-sm rounded-3xl overflow-hidden shadow-sm border border-arena relative mt-4 h-48 bg-arenaDark">
+              <img src={coverImage} alt="Portada" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-texto/60 to-transparent flex flex-col justify-end p-4 text-white">
+                <h1 className="text-xl font-bold tracking-tight">click&cut</h1>
+                <p className="text-xs opacity-90 text-arena">Panel Privado · Streaming Digital</p>
+              </div>
+            </div>
+
+            <div className="w-full max-w-xs flex flex-col items-center my-auto">
+              <span className="text-xs font-semibold tracking-wider text-textoMuted uppercase mb-3">Introduce tu PIN</span>
+              <div className="flex gap-4 mb-8">
+                {[0, 1, 2, 3].map(i => (
+                  <div
+                    key={i}
+                    className={`w-3.5 h-3.5 rounded-full border transition-all duration-200 ${
+                      pinInput.length > i
+                        ? pinError ? 'bg-terracota border-terracota scale-110' : 'bg-salviaDark border-salviaDark scale-110'
+                        : 'border-arenaDark bg-white'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 w-full">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+                  <button
+                    key={num}
+                    onClick={() => handlePinKeyPress(num.toString())}
+                    className="h-14 rounded-2xl bg-white border border-arena text-xl font-medium text-texto shadow-sm active:bg-arena/50 transition flex items-center justify-center font-mono-numbers"
+                  >
+                    {num}
+                  </button>
+                ))}
+                <button
+                  onClick={() => {
+                    const preset = prompt('Ingresa enlace URL de nueva foto de portada:');
+                    if (preset) setCoverImage(preset);
+                  }}
+                  className="h-14 rounded-2xl bg-lino border border-arena text-[11px] text-textoMuted active:bg-arena/40 flex items-center justify-center p-1 text-center"
+                >
+                  Foto
+                </button>
+                <button
+                  onClick={() => handlePinKeyPress('0')}
+                  className="h-14 rounded-2xl bg-white border border-arena text-xl font-medium text-texto shadow-sm active:bg-arena/50 transition flex items-center justify-center font-mono-numbers"
+                >
+                  0
+                </button>
+                <button
+                  onClick={() => setPinInput(prev => prev.slice(0, -1))}
+                  className="h-14 rounded-2xl bg-lino border border-arena text-xs font-semibold text-terracota active:bg-arena/40 flex items-center justify-center"
+                >
+                  Borrar
+                </button>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-textoMuted text-center pb-2">
+              PIN por defecto: <strong className="font-mono-numbers">2408</strong>
+            </p>
+          </div>
+        );
+      }
+
+      return (
+        <div className="min-h-screen bg-lino flex flex-col pb-24 text-texto">
+          {/* Header */}
+          <header className="sticky top-0 z-30 bg-lino/90 backdrop-blur-md border-b border-arena px-4 py-3 flex items-center justify-between">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-salviaDark">click&cut</span>
+              <h2 className="text-base font-semibold leading-tight">Tu Tienda Digital</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowCashClose(true)}
+                className="bg-durazno/40 text-texto border border-durazno px-3 py-1.5 rounded-xl text-xs font-medium active:scale-95"
+              >
+                Cierre
+              </button>
+              <button
+                onClick={() => setIsLocked(true)}
+                className="bg-white border border-arena text-terracota px-3 py-1.5 rounded-xl text-xs font-medium active:scale-95"
+              >
+                Bloquear
+              </button>
+            </div>
+          </header>
+
+          {/* Comandos Rápidos */}
+          <section className="px-4 pt-3">
+            <form onSubmit={handleExecuteCommand} className="flex gap-2">
+              <input
+                type="text"
+                value={commandInput}
+                onChange={e => setCommandInput(e.target.value)}
+                placeholder='Escribe ("bloquear", "nota [mi idea]", "cierre")...'
+                className="flex-1 bg-white border border-arena rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-salvia"
+              />
+              <button
+                type="submit"
+                className="bg-salviaDark text-white px-3.5 py-2 rounded-xl text-xs font-medium"
+              >
+                OK
+              </button>
+            </form>
+            {commandFeedback && (
+              <div className="mt-2 text-[11px] bg-arena/50 p-2 rounded-lg text-texto border border-arena flex justify-between items-center">
+                <span>{commandFeedback}</span>
+                <button onClick={() => setCommandFeedback('')} className="text-xs text-textoMuted ml-2 font-bold">×</button>
+              </div>
+            )}
+          </section>
+
+          {/* VISTAS PRINCIPALES */}
+          <main className="flex-1 p-4 max-w-2xl mx-auto w-full">
+            {/* PESTAÑA: NOTAS, IDEAS DE PRECIOS & COMPARADOR */}
+            {tab === 'ideas' && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="font-semibold text-sm">Pizarra de Notas & Estrategias</h3>
+                    <p className="text-xs text-textoMuted">Guarda ofertas de mayoristas, combos e ideas de precios</p>
+                  </div>
+                  <button
+                    onClick={() => setShowIdeaModal(true)}
+                    className="bg-salviaDark text-white px-3 py-1.5 rounded-xl text-xs font-medium active:opacity-90"
+                  >
+                    + Nueva Nota
+                  </button>
+                </div>
+
+                {/* SIMULADOR RÁPIDO DE PRECIOS Y MARGEN */}
+                <div className="bg-white border border-arena rounded-2xl p-4 shadow-sm space-y-3">
+                  <div className="flex justify-between items-center">
+                    <h4 className="font-semibold text-xs text-salviaDark uppercase tracking-wider">Simulador Rápido de Precios</h4>
+                    <span className="text-[10px] bg-arena px-2 py-0.5 rounded-full font-medium text-textoMuted">Calculadora</span>
+                  </div>
+                  <p className="text-xs text-textoMuted">Prueba números antes de lanzar una oferta o comprarle a un proveedor:</p>
+                  
+                  <div className="grid grid-cols-2 gap-3 text-xs font-mono-numbers">
+                    <div>
+                      <label className="text-textoMuted font-sans block mb-1">Costo Proveedor ($):</label>
+                      <input
+                        type="number"
+                        value={simCost}
+                        onChange={e => setSimCost(parseFloat(e.target.value) || 0)}
+                        className="w-full bg-lino border border-arena rounded-xl p-2 text-xs focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-textoMuted font-sans block mb-1">Precio al Público ($):</label>
+                      <input
+                        type="number"
+                        value={simPrice}
+                        onChange={e => setSimPrice(parseFloat(e.target.value) || 0)}
+                        className="w-full bg-lino border border-arena rounded-xl p-2 text-xs focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-lino border border-arena/70 text-xs font-mono-numbers">
+                    <div>
+                      <span className="font-sans text-textoMuted">Ganancia limpia: </span>
+                      <strong className="text-salviaDark font-bold">{formatMXN(simProfit)} MXN</strong>
+                    </div>
+                    <div>
+                      <span className="font-sans text-textoMuted">Margen: </span>
+                      <strong className={`font-bold ${simMargin >= 40 ? 'text-salviaDark' : 'text-terracota'}`}>
+                        {simMargin}%
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* LISTADO DE NOTAS E IDEAS GUARDADAS */}
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-xs text-textoMuted uppercase tracking-wider">Tus Notas & Ofertas Registradas</h4>
+                  {ideas.length === 0 ? (
+                    <div className="bg-white border border-arena rounded-2xl p-6 text-center text-xs text-textoMuted">
+                      No tienes notas guardadas aún. Pulsa en "+ Nueva Nota" para anotar ofertas o ideas de combos.
+                    </div>
+                  ) : (
+                    ideas.map(idea => {
+                      const hasNumbers = idea.proposedPrice > 0 && idea.proposedCost > 0;
+                      const profit = idea.proposedPrice - idea.proposedCost;
+                      const margin = idea.proposedPrice > 0 ? ((profit / idea.proposedPrice) * 100).toFixed(0) : 0;
+
+                      // Comparar con el inventario actual si tiene servicio asignado
+                      const currentInStock = products.find(p => p.name.toLowerCase() === (idea.serviceRef || '').toLowerCase());
+
+                      return (
+                        <div key={idea.id} className="bg-white border border-arena rounded-2xl p-4 shadow-sm space-y-2.5">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <span className="text-[10px] px-2 py-0.5 rounded-md bg-arena font-semibold text-textoMuted mr-2">
+                                {idea.tag}
+                              </span>
+                              <span className="text-[11px] text-textoMuted">{idea.provider}</span>
+                              <h4 className="font-semibold text-sm text-texto mt-1">{idea.title}</h4>
+                            </div>
+                            <button
+                              onClick={() => handleDeleteIdea(idea.id)}
+                              className="text-textoMuted hover:text-terracota text-xs font-bold px-1"
+                            >
+                              ✕
+                            </button>
+                          </div>
+
+                          <p className="text-xs text-texto leading-relaxed whitespace-pre-line bg-lino/60 p-2.5 rounded-xl border border-arena/50">
+                            {idea.content}
+                          </p>
+
+                          {/* Comparativa si hay números */}
+                          {hasNumbers && (
+                            <div className="space-y-2 pt-1">
+                              <div className="flex items-center justify-between text-xs font-mono-numbers bg-salvia/10 p-2 rounded-xl border border-salvia/20">
+                                <div>
+                                  <span className="font-sans text-[11px] text-textoMuted">Idea: Costo {formatMXN(idea.proposedCost)} ➔ Venta {formatMXN(idea.proposedPrice)}</span>
+                                </div>
+                                <div className="text-salviaDark font-semibold">
+                                  +{formatMXN(profit)} ({margin}%)
+                                </div>
+                              </div>
+
+                              {currentInStock && (
+                                <div className="flex items-center justify-between text-[11px] text-textoMuted bg-arena/40 px-2.5 py-1.5 rounded-lg font-mono-numbers">
+                                  <span>Tu precio actual en stock:</span>
+                                  <span>Costo: {formatMXN(currentInStock.cost)} | Venta: {formatMXN(currentInStock.price)}</span>
+                                </div>
+                              )}
+
+                              <div className="flex justify-end pt-1">
+                                <button
+                                  onClick={() => handleApplyIdeaToInventory(idea)}
+                                  className="bg-white border border-arena text-salviaDark hover:bg-salvia/20 px-3 py-1 rounded-xl text-xs font-semibold active:scale-95 transition"
+                                >
+                                  ➔ Aplicar a mi Inventario
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* PESTAÑA: INVENTARIO */}
+            {tab === 'inventory' && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="font-semibold text-sm">Inventario de Perfiles</h3>
+                    <p className="text-xs text-textoMuted">Cuentas y perfiles listos para entrega</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowClientCatalog(true)}
+                      className="bg-white border border-arena px-3 py-1.5 rounded-xl text-xs font-medium text-salviaDark"
+                    >
+                      Catálogo Clientes
+                    </button>
+                    <button
+                      onClick={() => { setEditingProduct(null); setShowProductModal(true); }}
+                      className="bg-salviaDark text-white px-3 py-1.5 rounded-xl text-xs font-medium"
+                    >
+                      + Nuevo
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid gap-2.5">
+                  {products.map(prod => {
+                    const margin = prod.price > 0 ? (((prod.price - prod.cost) / prod.price) * 100).toFixed(0) : 0;
+                    const isLow = prod.stock <= 2 && prod.stock > 0;
+                    const isOut = prod.stock === 0;
+
+                    return (
+                      <div key={prod.id} className="bg-white border border-arena rounded-2xl p-3.5 shadow-sm space-y-2">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-textoMuted">{prod.category}</span>
+                            <h4 className="font-semibold text-sm text-texto">{prod.name}</h4>
+                          </div>
+                          <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
+                            isOut ? 'bg-terracota/10 text-terracota border border-terracota/20' :
+                            isLow ? 'bg-durazno/50 text-terracota border border-durazno' :
+                            'bg-salvia/20 text-salviaDark border border-salvia/30'
+                          }`}>
+                            {isOut ? 'Agotado' : isLow ? `Bajo (${prod.stock} disp.)` : `${prod.stock} disponibles`}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs pt-1 border-t border-arena/60">
+                          <div className="space-x-3 font-mono-numbers">
+                            <span>Venta: <strong className="text-texto font-semibold">{formatMXN(prod.price)}</strong></span>
+                            <span className="text-textoMuted">Costo: {formatMXN(prod.cost)}</span>
+                            <span className="text-salviaDark font-medium">Margen: {margin}%</span>
+                          </div>
+                          <button
+                            onClick={() => { setEditingProduct(prod); setShowProductModal(true); }}
+                            className="text-[11px] text-textoMuted hover:text-texto font-medium underline"
+                          >
+                            Editar
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* PESTAÑA: MAYORISTAS */}
+            {tab === 'providers' && (
+              <div className="space-y-5">
+                <div className="bg-white border border-arena rounded-2xl p-4 shadow-sm space-y-3">
+                  <h3 className="font-semibold text-sm">Pegado Masivo de Catálogo</h3>
+                  <select
+                    value={selectedProviderId}
+                    onChange={e => setSelectedProviderId(e.target.value)}
+                    className="w-full bg-lino border border-arena rounded-xl p-2 text-xs focus:outline-none"
+                  >
+                    <option value="">Selecciona el proveedor...</option>
+                    {providers.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+
+                  <textarea
+                    rows={3}
+                    value={rawPasteText}
+                    onChange={e => setRawPasteText(e.target.value)}
+                    placeholder="Ejemplo:&#10;Netflix 5u $35&#10;Disney+ 10 perfiles a $20"
+                    className="w-full bg-lino border border-arena rounded-xl p-2.5 text-xs font-mono-numbers focus:outline-none"
+                  />
+
+                  <button
+                    onClick={() => {
+                      if (!selectedProviderId || !rawPasteText.trim()) return alert('Elige proveedor y pega texto.');
+                      const lines = rawPasteText.split('\n');
+                      const parsed = [];
+                      lines.forEach(l => {
+                        const mPrice = l.match(/(\$|\bcosto:?\s*|\bprecio:?\s*)(\d+(\.\d+)?)/i);
+                        const mStock = l.match(/(\d+)\s*(u|disp|stock)/i);
+                        const cost = mPrice ? parseFloat(mPrice[2]) : 25;
+                        const stock = mStock ? parseInt(mStock[1], 10) : 5;
+                        let name = l.replace(/(\$|\bcosto:?\s*|\bprecio:?\s*)\d+(\.\d+)?/gi, '').replace(/(\d+)\s*(u|disp|stock)/gi, '').replace(/[-–—:*•]/g, '').trim();
+                        if (name.length > 2) parsed.push({ service: name, cost, stock });
+                      });
+                      if (parsed.length === 0) return alert('No se detectaron servicios.');
+                      setProviders(prev => prev.map(p => p.id === selectedProviderId ? { ...p, catalog: [...p.catalog, ...parsed] } : p));
+                      setRawPasteText('');
+                      alert(`¡Agregados ${parsed.length} servicios!`);
+                    }}
+                    className="w-full bg-salviaDark text-white py-2 rounded-xl text-xs font-medium"
+                  >
+                    Procesar y Cargar a Lotes
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-sm">Stock por Proveedor</h3>
+                  {providers.map(prov => (
+                    <div key={prov.id} className="bg-white border border-arena rounded-2xl p-4 shadow-sm space-y-2.5">
+                      <h4 className="font-semibold text-sm text-texto">{prov.name}</h4>
+                      <p className="text-[11px] text-textoMuted">{prov.channel}</p>
+
+                      <div className="space-y-1.5 pt-1">
+                        {prov.catalog.map((c, i) => (
+                          <div key={i} className="flex items-center justify-between p-2 rounded-xl bg-lino border border-arena/70 text-xs">
+                            <div>
+                              <span className="font-medium">{c.service}</span>
+                              <div className="text-[11px] text-textoMuted font-mono-numbers">
+                                Costo: {formatMXN(c.cost)} · Stock: {c.stock}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setProducts(prev => {
+                                  const idx = prev.findIndex(p => p.name.toLowerCase() === c.service.toLowerCase());
+                                  if (idx !== -1) {
+                                    const u = [...prev];
+                                    u[idx].stock += c.stock;
+                                    u[idx].cost = c.cost;
+                                    return u;
+                                  } else {
+                                    return [...prev, { id: Date.now().toString(), name: c.service, category: 'Streaming', stock: c.stock, price: Math.round(c.cost * 1.5), cost: c.cost }];
+                                  }
+                                });
+                                alert(`"${c.service}" transferido a tu inventario.`);
+                              }}
+                              className="bg-white border border-arena px-2.5 py-1 rounded-lg text-[11px] font-medium text-salviaDark"
+                            >
+                              ➔ Pasar a mi Inventario
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* PESTAÑA: VENCIMIENTOS */}
+            {tab === 'renewals' && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="font-semibold text-sm">Control de Vencimientos</h3>
+                    <p className="text-xs text-textoMuted">Cortes de cuentas y recordatorios</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const client = prompt('Nombre del cliente:');
+                      if (!client) return;
+                      const service = prompt('Servicio (ej. Netflix Perfil 1):');
+                      const d = new Date();
+                      d.setDate(d.getDate() + 30);
+                      setSubscriptions(prev => [...prev, {
+                        id: Date.now().toString(),
+                        client,
+                        phone: '',
+                        service: service || 'Perfil Streaming',
+                        profile: 'Perfil 1',
+                        endDate: d.toISOString().split('T')[0],
+                        price: 65,
+                        cost: 35
+                      }]);
+                    }}
+                    className="bg-salviaDark text-white px-3 py-1.5 rounded-xl text-xs font-medium"
+                  >
+                    + Suscripción
+                  </button>
+                </div>
+
+                <div className="grid gap-2.5">
+                  {subscriptions.map(sub => {
+                    const end = new Date(sub.endDate);
+                    const now = new Date();
+                    const diffDays = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
+                    const isExpired = diffDays < 0;
+
+                    const whatsappMsg = encodeURIComponent(
+                      `¡Hola ${sub.client}! Te escribimos de *click&cut*. Tu perfil de *${sub.service}* ${
+                        isExpired ? 'venció el día ' + sub.endDate : 'está próximo a vencer en ' + diffDays + ' día(s)'
+                      }. ¿Deseas renovar para continuar con el servicio?`
+                    );
+
+                    return (
+                      <div key={sub.id} className="bg-white border border-arena rounded-2xl p-4 shadow-sm space-y-2">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-semibold text-sm text-texto">{sub.client}</h4>
+                            <p className="text-xs text-textoMuted">{sub.service} · {sub.profile}</p>
+                          </div>
+                          <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
+                            isExpired ? 'bg-terracota/20 text-terracota border border-terracota/40' :
+                            diffDays <= 3 ? 'bg-durazno/50 text-terracota border border-durazno' :
+                            'bg-salvia/20 text-salviaDark border border-salvia/30'
+                          }`}>
+                            {isExpired ? 'Vencido' : `${diffDays} días restantes`}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs pt-2 border-t border-arena/60">
+                          <span className="text-textoMuted font-mono-numbers text-[11px]">Corte: {sub.endDate}</span>
+                          <div className="flex gap-2">
+                            <a
+                              href={`https://wa.me/?text=${whatsappMsg}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="bg-lino border border-arena px-2.5 py-1 rounded-lg text-[11px] text-salviaDark font-medium"
+                            >
+                              WhatsApp
+                            </a>
+                            <button
+                              onClick={() => handleRenewSubscription(sub)}
+                              className="bg-salviaDark text-white px-2.5 py-1 rounded-lg text-[11px] font-medium"
+                            >
+                              +30 Días
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* PESTAÑA: AJUSTES */}
+            {tab === 'settings' && (
+              <div className="space-y-4">
+                <h3 className="font-semibold text-sm">Ajustes y Seguridad</h3>
+                <div className="bg-white border border-arena rounded-2xl p-4 shadow-sm space-y-2">
+                  <h4 className="font-semibold text-xs">PIN de Desbloqueo</h4>
+                  <p className="text-xs text-textoMuted">PIN actual: <span className="font-mono-numbers font-bold">{pin}</span></p>
+                  <button
+                    onClick={() => {
+                      const newP = prompt('Introduce el nuevo PIN de 4 dígitos:');
+                      if (newP && newP.length === 4 && !isNaN(newP)) {
+                        setPin(newP);
+                        alert('¡PIN actualizado!');
+                      }
+                    }}
+                    className="bg-lino border border-arena px-3 py-1.5 rounded-xl text-xs font-medium"
+                  >
+                    Modificar PIN
+                  </button>
+                </div>
+              </div>
+            )}
+          </main>
+
+          {/* BARRA INFERIOR DE PESTAÑAS (INCLUYE NOTAS) */}
+          <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-arena px-2 py-2 flex justify-around z-30">
+            {[
+              { id: 'inventory', label: 'Inventario' },
+              { id: 'ideas', label: 'Notas/Ideas' },
+              { id: 'providers', label: 'Mayoristas' },
+              { id: 'renewals', label: 'Vencimientos' },
+              { id: 'settings', label: 'Ajustes' }
+            ].map(item => (
+              <button
+                key={item.id}
+                onClick={() => setTab(item.id)}
+                className={`py-1 px-2.5 rounded-xl text-xs ${
+                  tab === item.id ? 'text-salviaDark font-bold' : 'text-textoMuted'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+
+          {/* MODAL: NUEVA NOTA / IDEA DE PRECIOS */}
+          {showIdeaModal && (
+            <div className="fixed inset-0 bg-texto/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white border border-arena rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-xl">
+                <div className="flex justify-between items-center border-b border-arena pb-2">
+                  <h3 className="font-bold text-sm">Nueva Nota / Idea de Precios</h3>
+                  <button onClick={() => setShowIdeaModal(false)} className="text-textoMuted font-bold">✕</button>
+                </div>
+
+                <form onSubmit={handleSaveIdea} className="space-y-3 text-xs">
+                  <div>
+                    <label className="text-textoMuted">Título o Resumen:</label>
+                    <input
+                      value={ideaForm.title}
+                      onChange={e => setIdeaForm({ ...ideaForm, title: e.target.value })}
+                      placeholder="Ej. Oferta Netflix en Alex"
+                      required
+                      className="w-full bg-lino border border-arena rounded-xl p-2 mt-1 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-textoMuted">Proveedor / Origen:</label>
+                      <input
+                        value={ideaForm.provider}
+                        onChange={e => setIdeaForm({ ...ideaForm, provider: e.target.value })}
+                        placeholder="Alex, Telegram, etc."
+                        className="w-full bg-lino border border-arena rounded-xl p-2 mt-1 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-textoMuted">Etiqueta:</label>
+                      <select
+                        value={ideaForm.tag}
+                        onChange={e => setIdeaForm({ ...ideaForm, tag: e.target.value })}
+                        className="w-full bg-lino border border-arena rounded-xl p-2 mt-1 focus:outline-none"
+                      >
+                        <option value="Oferta Mayorista">Oferta Mayorista</option>
+                        <option value="Combo / Promo">Combo / Promo</option>
+                        <option value="Idea de Precio">Idea de Precio</option>
+                        <option value="Nota General">Nota General</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-textoMuted">Detalles o mensaje pegado:</label>
+                    <textarea
+                      rows={3}
+                      value={ideaForm.content}
+                      onChange={e => setIdeaForm({ ...ideaForm, content: e.target.value })}
+                      placeholder="Anota las condiciones, paquetes de cuentas, precios por lote..."
+                      className="w-full bg-lino border border-arena rounded-xl p-2 mt-1 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="border-t border-arena pt-2">
+                    <span className="text-[11px] font-semibold text-salviaDark">Comparar y Calcular (Opcional)</span>
+                    <div className="grid grid-cols-2 gap-2 mt-1.5 font-mono-numbers">
+                      <div>
+                        <label className="text-textoMuted font-sans block text-[10px]">Costo Proveedor ($):</label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={ideaForm.proposedCost}
+                          onChange={e => setIdeaForm({ ...ideaForm, proposedCost: e.target.value })}
+                          placeholder="30"
+                          className="w-full bg-lino border border-arena rounded-xl p-1.5 text-xs focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-textoMuted font-sans block text-[10px]">Tu Precio Venta ($):</label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={ideaForm.proposedPrice}
+                          onChange={e => setIdeaForm({ ...ideaForm, proposedPrice: e.target.value })}
+                          placeholder="60"
+                          className="w-full bg-lino border border-arena rounded-xl p-1.5 text-xs focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-2">
+                      <label className="text-textoMuted text-[10px] block">Vincular con Producto de Inventario:</label>
+                      <select
+                        value={ideaForm.serviceRef}
+                        onChange={e => setIdeaForm({ ...ideaForm, serviceRef: e.target.value })}
+                        className="w-full bg-lino border border-arena rounded-xl p-1.5 mt-0.5 text-xs focus:outline-none"
+                      >
+                        <option value="">Ninguno (Nuevo / Idea libre)</option>
+                        {products.map(p => (
+                          <option key={p.id} value={p.name}>{p.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowIdeaModal(false)}
+                      className="flex-1 bg-lino border border-arena py-2 rounded-xl text-texto font-medium"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 bg-salviaDark text-white py-2 rounded-xl font-medium"
+                    >
+                      Guardar Nota
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL: CIERRE DE CAJA */}
+          {showCashClose && (
+            <div className="fixed inset-0 bg-texto/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white border border-arena rounded-3xl p-5 max-w-sm w-full space-y-4 shadow-xl">
+                <div className="flex justify-between items-center border-b border-arena pb-2">
+                  <h3 className="font-bold text-sm">Cierre de Caja (24 Horas)</h3>
+                  <button onClick={() => setShowCashClose(false)} className="text-textoMuted font-bold">✕</button>
+                </div>
+                <div className="space-y-2 font-mono-numbers text-xs">
+                  <div className="flex justify-between py-1 border-b border-arena/40">
+                    <span className="font-sans text-textoMuted">Ventas Realizadas:</span>
+                    <strong>{cashCloseSummary.count}</strong>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-arena/40">
+                    <span className="font-sans text-textoMuted">Total Cobrado:</span>
+                    <strong>{formatMXN(cashCloseSummary.totalIncome)}</strong>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-arena/40">
+                    <span className="font-sans text-textoMuted">Costo Mayoristas:</span>
+                    <strong className="text-terracota">{formatMXN(cashCloseSummary.totalCost)}</strong>
+                  </div>
+                  <div className="flex justify-between py-2 text-sm">
+                    <span className="font-sans font-bold text-salviaDark">Ganancia Neta:</span>
+                    <strong className="text-salviaDark">{formatMXN(cashCloseSummary.totalProfit)}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL: CATÁLOGO PARA CLIENTES */}
+          {showClientCatalog && (
+            <div className="fixed inset-0 bg-texto/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white border border-arena rounded-3xl p-5 max-w-sm w-full space-y-4 shadow-xl">
+                <div className="flex justify-between items-center border-b border-arena pb-2">
+                  <h3 className="font-bold text-sm">Lista de Precios para Clientes</h3>
+                  <button onClick={() => setShowClientCatalog(false)} className="text-textoMuted font-bold">✕</button>
+                </div>
+                <div className="max-h-60 overflow-y-auto space-y-1.5 text-xs pr-1">
+                  {products.map(p => (
+                    <div key={p.id} className="flex justify-between py-1 border-b border-arena/40">
+                      <span>{p.name}</span>
+                      <strong className="font-mono-numbers">{formatMXN(p.price)}/mes</strong>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => {
+                    const lines = products.map(p => `✨ *${p.name}*: ${formatMXN(p.price)} MXN/mes`);
+                    const msg = `🍿 *CATÁLOGO STREAMING · click&cut*\nEntrega inmediata y garantía total.\n\n${lines.join('\n')}\n\n📲 ¡Envía mensaje para pedir el tuyo!`;
+                    navigator.clipboard.writeText(msg);
+                    alert('¡Lista copiada!');
+                  }}
+                  className="w-full bg-salviaDark text-white py-2 rounded-xl text-xs font-semibold"
+                >
+                  Copiar para WhatsApp
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL: ALTA/EDICIÓN PRODUCTO */}
+          {showProductModal && (
+            <div className="fixed inset-0 bg-texto/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white border border-arena rounded-3xl p-5 max-w-sm w-full shadow-xl">
+                <h3 className="font-bold text-sm mb-3">
+                  {editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
+                </h3>
+                <form onSubmit={handleSaveProduct} className="space-y-3 text-xs">
+                  <div>
+                    <label className="text-textoMuted">Nombre del Servicio:</label>
+                    <input
+                      name="prodName"
+                      defaultValue={editingProduct?.name || ''}
+                      required
+                      className="w-full bg-lino border border-arena rounded-xl p-2 mt-1 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-textoMuted">Categoría:</label>
+                    <input
+                      name="prodCategory"
+                      defaultValue={editingProduct?.category || 'Streaming'}
+                      required
+                      className="w-full bg-lino border border-arena rounded-xl p-2 mt-1 focus:outline-none"
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 font-mono-numbers">
+                    <div>
+                      <label className="text-textoMuted font-sans">Stock:</label>
+                      <input
+                        type="number"
+                        name="prodStock"
+                        defaultValue={editingProduct?.stock ?? 1}
+                        required
+                        className="w-full bg-lino border border-arena rounded-xl p-2 mt-1 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-textoMuted font-sans">Venta ($):</label>
+                      <input
+                        type="number"
+                        step="any"
+                        name="prodPrice"
+                        defaultValue={editingProduct?.price || 60}
+                        required
+                        className="w-full bg-lino border border-arena rounded-xl p-2 mt-1 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-textoMuted font-sans">Costo ($):</label>
+                      <input
+                        type="number"
+                        step="any"
+                        name="prodCost"
+                        defaultValue={editingProduct?.cost || 30}
+                        required
+                        className="w-full bg-lino border border-arena rounded-xl p-2 mt-1 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => { setShowProductModal(false); setEditingProduct(null); }}
+                      className="flex-1 bg-lino border border-arena py-2 rounded-xl text-texto font-medium"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 bg-salviaDark text-white py-2 rounded-xl font-medium"
+                    >
+                      Guardar
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
